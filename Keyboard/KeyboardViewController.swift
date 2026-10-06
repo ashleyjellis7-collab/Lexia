@@ -92,11 +92,13 @@ final class KeyboardViewController: UIInputViewController {
         }
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let lexicon = try? Lexicon.bundledEnglish() else { return }
-            await MainActor.run {
-                KeyboardViewController.sharedLexicon = lexicon
-                self?.makePipeline(lexicon)
-            }
+            await self?.didLoad(lexicon)
         }
+    }
+
+    private func didLoad(_ lexicon: Lexicon) {
+        Self.sharedLexicon = lexicon
+        makePipeline(lexicon)
     }
 
     private func makePipeline(_ lexicon: Lexicon) {
