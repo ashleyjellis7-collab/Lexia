@@ -1,14 +1,14 @@
-# Generate the Xcode project with XcodeGen:
-#   brew install xcodegen && xcodegen
-# Then open Lexia.xcodeproj, choose your team, and run the "Lexia" scheme.
+# XcodeGen spec. Lexia.xcodeproj is generated from this file and committed,
+# so you only need XcodeGen (brew install xcodegen && xcodegen) if you change
+# this file.
 #
-# Before running on a device, change the identifiers below to ones your team
-# owns: the bundle ID prefix, App Group and Keychain group must match in both
-# targets.
+# If Xcode says the bundle identifier is unavailable, change
+# LEXIA_BUNDLE_PREFIX below (or in Xcode: project ▸ Build Settings) to
+# something unique like com.yourname.lexia.
 name: Lexia
 
 options:
-  bundleIdPrefix: app.lexia
+  bundleIdPrefix: io.github.ashleyjellis7
   deploymentTarget:
     iOS: "16.0"
   createIntermediateGroups: true
@@ -18,9 +18,10 @@ settings:
     SWIFT_VERSION: "5.9"
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
-    DEVELOPMENT_TEAM: ""                # ← your Apple team ID
-    LEXIA_APP_GROUP: group.app.lexia
-    LEXIA_KEYCHAIN_GROUP: $(AppIdentifierPrefix)app.lexia.shared
+    DEVELOPMENT_TEAM: ""                # ← chosen in Xcode under Signing & Capabilities
+    CODE_SIGN_STYLE: Automatic
+    LEXIA_BUNDLE_PREFIX: io.github.ashleyjellis7.lexia
+    LEXIA_KEYCHAIN_GROUP: $(AppIdentifierPrefix)$(LEXIA_BUNDLE_PREFIX).shared
     TARGETED_DEVICE_FAMILY: "1,2"
 
 packages:
@@ -41,7 +42,7 @@ targets:
       - target: LexiaKeyboard
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.lexia
+        PRODUCT_BUNDLE_IDENTIFIER: $(LEXIA_BUNDLE_PREFIX)
     info:
       path: App/Info.plist
       properties:
@@ -54,13 +55,10 @@ targets:
         UIAppFonts:
           - OpenDyslexic-Regular.otf
           - OpenDyslexic-Bold.otf
-        LexiaAppGroup: $(LEXIA_APP_GROUP)
         LexiaKeychainGroup: $(LEXIA_KEYCHAIN_GROUP)
     entitlements:
       path: App/Lexia.entitlements
       properties:
-        com.apple.security.application-groups:
-          - $(LEXIA_APP_GROUP)
         keychain-access-groups:
           - $(LEXIA_KEYCHAIN_GROUP)
 
@@ -76,7 +74,7 @@ targets:
       - package: LexiaCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.lexia.keyboard
+        PRODUCT_BUNDLE_IDENTIFIER: $(LEXIA_BUNDLE_PREFIX).keyboard
     info:
       path: Keyboard/Info.plist
       properties:
@@ -84,7 +82,6 @@ targets:
         UIAppFonts:
           - OpenDyslexic-Regular.otf
           - OpenDyslexic-Bold.otf
-        LexiaAppGroup: $(LEXIA_APP_GROUP)
         LexiaKeychainGroup: $(LEXIA_KEYCHAIN_GROUP)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.keyboard-service
@@ -93,13 +90,11 @@ targets:
             IsASCIICapable: true
             PrefersRightToLeft: false
             PrimaryLanguage: en-US
-            # Needed to reach Jev and to share settings with the app.
+            # Needed to reach Jev.
             RequestsOpenAccess: true
     entitlements:
       path: Keyboard/LexiaKeyboard.entitlements
       properties:
-        com.apple.security.application-groups:
-          - $(LEXIA_APP_GROUP)
         keychain-access-groups:
           - $(LEXIA_KEYCHAIN_GROUP)
 

@@ -1,17 +1,20 @@
 import Foundation
 import Security
 
-/// Stores the TypeSafe API key in a Keychain access group shared by the app and keyboard.
+/// Small values shared by the Lexia app and keyboard through a Keychain
+/// access group: the TypeSafe API key, settings and the personal dictionary.
+///
+/// The Keychain (rather than an App Group) is used because it also works with
+/// a free Apple developer account, which can't use App Groups.
 enum KeychainStore {
-    private static let service = "app.lexia.typesafe"
-    private static let account = "api-key"
+    private static let service = "app.lexia"
 
     /// From Info.plist (`LexiaKeychainGroup`), set in project.yml.
     private static var accessGroup: String? {
         Bundle.main.object(forInfoDictionaryKey: "LexiaKeychainGroup") as? String
     }
 
-    private static func baseQuery() -> [String: Any] {
+    private static func baseQuery(_ account: String) -> [String: Any] {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -21,36 +24,41 @@ enum KeychainStore {
         return query
     }
 
-    static func readAPIKey() -> String? {
-        var query = baseQuery()
+    static func data(for account: String) -> Data? {
+        var query = baseQuery(account)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess else { return nil }
+        return item as? Data
+    }
+
+    @discardableResult
+    static func set(_ data: Data?, for account: String) -> Bool {
+        guard let data else {
+            let status = SecItemDelete(baseQuery(account) as CFDictionary)
+            return status == errSecSuccess || status == errSecItemNotFound
+        }
+        let status = SecItemUpdate(baseQuery(account) as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        guard status == errSecItemNotFound else { return status == errSecSuccess }
+        var add = baseQuery(account)
+        add[kSecValueData as String] = data
+        // Readable by the keyboard after the phone's first unlock.
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        return SecItemAdd(add as CFDictionary, nil) == errSecSuccess
+    }
+
+    // MARK: - API key
+
+    private static let apiKeyAccount = "typesafe-api-key"
+
+    static func readAPIKey() -> String? {
+        data(for: apiKeyAccount).flatMap { String(data: $0, encoding: .utf8) }
     }
 
     @discardableResult
     static func saveAPIKey(_ key: String) -> Bool {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return deleteAPIKey() }
-        let data = Data(trimmed.utf8)
-        let update: [String: Any] = [kSecValueData as String: data]
-        let status = SecItemUpdate(baseQuery() as CFDictionary, update as CFDictionary)
-        if status == errSecItemNotFound {
-            var add = baseQuery()
-            add[kSecValueData as String] = data
-            // Readable by the keyboard after the first unlock.
-            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-            return SecItemAdd(add as CFDictionary, nil) == errSecSuccess
-        }
-        return status == errSecSuccess
-    }
-
-    @discardableResult
-    static func deleteAPIKey() -> Bool {
-        let status = SecItemDelete(baseQuery() as CFDictionary)
-        return status == errSecSuccess || status == errSecItemNotFound
+        return set(trimmed.isEmpty ? nil : Data(trimmed.utf8), for: apiKeyAccount)
     }
 }

@@ -61,34 +61,43 @@ struct LexiaSettings: Codable, Equatable {
     }
 }
 
-/// Reads and writes settings and the personal dictionary in the shared App Group.
+/// Reads and writes settings and the personal dictionary, shared between the
+/// app and keyboard through the Keychain. A local copy is kept as a fallback
+/// in case the Keychain can't be reached (e.g. the keyboard without Full Access).
 final class SettingsStore {
     static let shared = SettingsStore()
 
-    /// From Info.plist (`LexiaAppGroup`), set in project.yml.
-    static let appGroup = Bundle.main.object(forInfoDictionaryKey: "LexiaAppGroup") as? String
-
-    private let defaults: UserDefaults
+    private let local = UserDefaults.standard
     private let settingsKey = "settings.v1"
     private let wordsKey = "personalWords.v1"
 
-    init(defaults: UserDefaults? = nil) {
-        self.defaults = defaults ?? Self.appGroup.flatMap(UserDefaults.init(suiteName:)) ?? .standard
+    private func read(_ key: String) -> Data? {
+        KeychainStore.data(for: key) ?? local.data(forKey: key)
+    }
+
+    private func write(_ data: Data, _ key: String) {
+        local.set(data, forKey: key)
+        KeychainStore.set(data, for: key)
     }
 
     func load() -> LexiaSettings {
-        guard let data = defaults.data(forKey: settingsKey),
+        guard let data = read(settingsKey),
               let settings = try? JSONDecoder().decode(LexiaSettings.self, from: data) else { return LexiaSettings() }
         return settings
     }
 
     func save(_ settings: LexiaSettings) {
-        if let data = try? JSONEncoder().encode(settings) { defaults.set(data, forKey: settingsKey) }
+        if let data = try? JSONEncoder().encode(settings) { write(data, settingsKey) }
     }
 
     var personalWords: [String] {
-        get { defaults.stringArray(forKey: wordsKey) ?? [] }
-        set { defaults.set(Array(Set(newValue)).sorted(), forKey: wordsKey) }
+        get {
+            guard let data = read(wordsKey) else { return [] }
+            return (try? JSONDecoder().decode([String].self, from: data)) ?? []
+        }
+        set {
+            if let data = try? JSONEncoder().encode(Array(Set(newValue)).sorted()) { write(data, wordsKey) }
+        }
     }
 
     func addPersonalWord(_ word: String) {
