@@ -53,14 +53,30 @@ public enum EditCost {
         return table
     }()
 
+    /// A rewrite of up to 4 bytes into up to 4 bytes, packed so the inner loop
+    /// does no reference counting.
     private struct Rule {
-        let from: [UInt8]
-        let to: [UInt8]
+        let from: UInt32
+        let fromCount: Int
+        let to: UInt32
+        let toCount: Int
         let cost: Double
+
+        init(_ from: [UInt8], _ to: [UInt8], _ cost: Double) {
+            func pack(_ bytes: [UInt8]) -> UInt32 {
+                bytes.enumerated().reduce(0) { $0 | UInt32($1.element) << (8 * UInt32($1.offset)) }
+            }
+            self.from = pack(from)
+            self.fromCount = from.count
+            self.to = pack(to)
+            self.toCount = to.count
+            self.cost = cost
+        }
     }
 
-    /// Spelling-by-sound rewrites, indexed by the last byte of `from`.
-    private static let rules: [[Rule]] = {
+    /// Spelling-by-sound rewrites, both directions, grouped by the last byte of
+    /// `from`: the rules ending in byte `c` are `rules[ruleStart[c]..<ruleStart[c + 1]]`.
+    private static let ruleTable: (rules: [Rule], start: [Int]) = {
         let raw: [(String, String, Double)] = [
             ("ph", "f", 0.25), ("gh", "f", 0.4), ("kn", "n", 0.25), ("wr", "r", 0.25), ("wh", "w", 0.25),
             ("ck", "k", 0.2), ("ck", "c", 0.3), ("qu", "kw", 0.3), ("x", "ks", 0.3),
@@ -77,13 +93,26 @@ public enum EditCost {
             ("ous", "us", 0.3), ("ful", "full", 0.2), ("ly", "ley", 0.3), ("ies", "ys", 0.35),
             ("ei", "ie", 0.25), ("they", "thay", 0.3),
         ]
-        var index = [[Rule]](repeating: [], count: 128)
+        var byLastByte = [[Rule]](repeating: [], count: 128)
         for (a, b, cost) in raw {
             let x = Array(a.utf8), y = Array(b.utf8)
-            index[Int(x.last!)].append(Rule(from: x, to: y, cost: cost))
-            index[Int(y.last!)].append(Rule(from: y, to: x, cost: cost))
+            byLastByte[Int(x.last!)].append(Rule(x, y, cost))
+            byLastByte[Int(y.last!)].append(Rule(y, x, cost))
         }
-        return index
+        var start = [0]
+        for group in byLastByte { start.append(start.last! + group.count) }
+        return (byLastByte.flatMap { $0 }, start)
+    }()
+
+    private static var rules: [Rule] { ruleTable.rules }
+    private static var ruleStart: [Int] { ruleTable.start }
+
+    /// Insert/delete cost by byte, before the doubled-letter discount.
+    private static let baseIndel: [Double] = {
+        var table = [Double](repeating: 1.0, count: 256)
+        for byte in "aeiouhwy".utf8 { table[Int(byte)] = 0.6 }
+        table[Int(apostrophe)] = 0.1
+        return table
     }()
 
     @inline(__always)
@@ -95,23 +124,19 @@ public enum EditCost {
 
     /// Cost of inserting or deleting `s[k]`.
     @inline(__always)
-    static func indel(_ s: [UInt8], _ k: Int) -> Double {
+    private static func indel(_ s: UnsafeBufferPointer<UInt8>, _ k: Int, _ base: UnsafeBufferPointer<Double>) -> Double {
         let ch = s[k]
         if ch == apostrophe { return 0.1 }
         if (k > 0 && s[k - 1] == ch) || (k + 1 < s.count && s[k + 1] == ch) { return 0.3 }
-        if vowels.contains(ch) || ch == UInt8(ascii: "h") || ch == UInt8(ascii: "w") || ch == UInt8(ascii: "y") {
-            return 0.6
-        }
-        return 1.0
+        return base[Int(ch)]
     }
 
     @inline(__always)
-    private static func hasSuffix(_ s: [UInt8], end: Int, _ suffix: [UInt8]) -> Bool {
-        guard end >= suffix.count else { return false }
-        var i = end - suffix.count
-        for byte in suffix {
-            if s[i] != byte { return false }
-            i += 1
+    private static func hasSuffix(_ s: UnsafeBufferPointer<UInt8>, end: Int, _ packed: UInt32, _ count: Int) -> Bool {
+        guard end >= count else { return false }
+        let start = end - count
+        for k in 0..<count where s[start + k] != UInt8(truncatingIfNeeded: packed >> (8 * UInt32(k))) {
+            return false
         }
         return true
     }
@@ -121,42 +146,81 @@ public enum EditCost {
     /// allocating a matrix per word.
     public static func distance(_ a: [UInt8], _ b: [UInt8], limit: Double = .infinity, scratch: inout [Double]) -> Double {
         let n = a.count, m = b.count
-        if n == 0 { return (0..<m).reduce(0) { $0 + indel(b, $1) } }
-        if m == 0 { return (0..<n).reduce(0) { $0 + indel(a, $1) } }
-
         let width = m + 1
-        let size = (n + 1) * width
+        let size = (n + 1) * width + n + m
         if scratch.count < size { scratch = [Double](repeating: 0, count: size) }
 
-        scratch[0] = 0
-        for j in 1...m { scratch[j] = scratch[j - 1] + indel(b, j - 1) }
-        for i in 1...n {
-            let ai = a[i - 1]
-            let rowRules = ai < 128 ? rules[Int(ai)] : []
-            let deleteA = indel(a, i - 1)
-            scratch[i * width] = scratch[(i - 1) * width] + deleteA
-            var rowMin = scratch[i * width]
-            for j in 1...m {
-                let bj = b[j - 1]
-                var v = min(
-                    scratch[(i - 1) * width + j] + deleteA,
-                    scratch[i * width + j - 1] + indel(b, j - 1),
-                    scratch[(i - 1) * width + j - 1] + substitution(ai, bj)
-                )
-                if i > 1, j > 1, ai == b[j - 2], a[i - 2] == bj, ai != a[i - 2] {
-                    v = min(v, scratch[(i - 2) * width + j - 2] + transposition)
-                }
-                for rule in rowRules where i >= rule.from.count && j >= rule.to.count {
-                    if hasSuffix(a, end: i, rule.from), hasSuffix(b, end: j, rule.to) {
-                        v = min(v, scratch[(i - rule.from.count) * width + (j - rule.to.count)] + rule.cost)
+        return a.withUnsafeBufferPointer { A in
+            b.withUnsafeBufferPointer { B in
+                scratch.withUnsafeMutableBufferPointer { buffer in
+                    rules.withUnsafeBufferPointer { R in
+                        ruleStart.withUnsafeBufferPointer { S in
+                            substitutionTable.withUnsafeBufferPointer { T in
+                                baseIndel.withUnsafeBufferPointer { base in
+                                    kernel(A, B, buffer, R, S, T, base, limit)
+                                }
+                            }
+                        }
                     }
                 }
-                scratch[i * width + j] = v
-                rowMin = min(rowMin, v)
+            }
+        }
+    }
+
+    private static func kernel(_ A: UnsafeBufferPointer<UInt8>, _ B: UnsafeBufferPointer<UInt8>,
+                               _ buffer: UnsafeMutableBufferPointer<Double>,
+                               _ R: UnsafeBufferPointer<Rule>, _ S: UnsafeBufferPointer<Int>,
+                               _ T: UnsafeBufferPointer<Double>, _ base: UnsafeBufferPointer<Double>,
+                               _ limit: Double) -> Double {
+        let n = A.count, m = B.count
+        let width = m + 1
+        let matrix = (n + 1) * width
+        // Per-letter insert/delete costs live after the matrix.
+        for i in 0..<n { buffer[matrix + i] = indel(A, i, base) }
+        for j in 0..<m { buffer[matrix + n + j] = indel(B, j, base) }
+        if n == 0 { return (0..<m).reduce(0) { $0 + buffer[matrix + n + $1] } }
+        if m == 0 { return (0..<n).reduce(0) { $0 + buffer[matrix + $1] } }
+
+        buffer[0] = 0
+        for j in 1...m { buffer[j] = buffer[j - 1] + buffer[matrix + n + j - 1] }
+        for i in 1...n {
+            let ai = A[i - 1]
+            let row = i * width, prev = row - width
+            let deleteA = buffer[matrix + i - 1]
+            let rulesFrom = ai < 128 ? S[Int(ai)] : 0
+            let rulesTo = ai < 128 ? S[Int(ai) + 1] : 0
+            let subRow = Int(ai & 0x7F) * 128
+            buffer[row] = buffer[prev] + deleteA
+            var rowMin = buffer[row]
+            for j in 1...m {
+                let bj = B[j - 1]
+                var v = buffer[prev + j] + deleteA
+                let insert = buffer[row + j - 1] + buffer[matrix + n + j - 1]
+                if insert < v { v = insert }
+                let substitutionCost: Double = ai == bj ? 0 : (ai < 128 && bj < 128 ? T[subRow + Int(bj)] : 1)
+                let substitute = buffer[prev + j - 1] + substitutionCost
+                if substitute < v { v = substitute }
+                if i > 1, j > 1, ai == B[j - 2], A[i - 2] == bj, ai != A[i - 2] {
+                    let swap = buffer[prev - width + j - 2] + transposition
+                    if swap < v { v = swap }
+                }
+                var r = rulesFrom
+                while r < rulesTo {
+                    let rule = R[r]
+                    r += 1
+                    guard i >= rule.fromCount, j >= rule.toCount else { continue }
+                    let viaRule = buffer[(i - rule.fromCount) * width + j - rule.toCount] + rule.cost
+                    if viaRule < v, hasSuffix(A, end: i, rule.from, rule.fromCount),
+                       hasSuffix(B, end: j, rule.to, rule.toCount) {
+                        v = viaRule
+                    }
+                }
+                buffer[row + j] = v
+                if v < rowMin { rowMin = v }
             }
             if rowMin > limit { return .infinity }
         }
-        return scratch[n * width + m]
+        return buffer[n * width + m]
     }
 
     /// Convenience overload for one-off comparisons and tests.

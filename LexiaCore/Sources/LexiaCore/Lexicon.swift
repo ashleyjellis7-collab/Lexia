@@ -15,6 +15,15 @@ public final class Lexicon: @unchecked Sendable {
         /// log10(frequency) scaled to 0...1 against the most frequent word.
         public let weight: Double
         public let phoneticKeys: [UInt64]
+        /// One bit per letter a–z present in the word.
+        public let letterMask: UInt32
+    }
+
+    /// One bit per letter a–z present in `bytes`.
+    public static func letterMask(_ bytes: [UInt8]) -> UInt32 {
+        var mask: UInt32 = 0
+        for byte in bytes where byte >= 97 && byte <= 122 { mask |= 1 << UInt32(byte - 97) }
+        return mask
     }
 
     public let entries: [Entry]
@@ -35,7 +44,8 @@ public final class Lexicon: @unchecked Sendable {
                 bytes: Array(lower.utf8),
                 frequency: frequency,
                 weight: log10(Double(max(frequency, 1))) / maxLog,
-                phoneticKeys: Phonetic.keys(for: lower)
+                phoneticKeys: Phonetic.keys(for: lower),
+                letterMask: Self.letterMask(Array(lower.utf8))
             ))
         }
         self.entries = entries

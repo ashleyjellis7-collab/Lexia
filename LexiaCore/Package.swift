@@ -10,7 +10,10 @@ let package = Package(
     targets: [
         .target(
             name: "LexiaCore",
-            resources: [.copy("Resources/words_en.txt")]
+            resources: [.copy("Resources/words_en.txt")],
+            // The spelling engine runs on every keystroke, so keep it optimised
+            // even in Debug builds (keyboard extensions are run from Xcode in Debug).
+            swiftSettings: [.unsafeFlags(["-O"], .when(configuration: .debug))]
         ),
         .testTarget(
             name: "LexiaCoreTests",

@@ -95,6 +95,10 @@ public final class SpellingEngine: @unchecked Sendable {
         }
 
         let typedKeys = Phonetic.keys(for: lower)
+        let typedMask = Lexicon.letterMask(bytes)
+        let typedLetterCount = typedMask.nonzeroBitCount
+        // A candidate must share most of the typed letters (or sound alike).
+        let minSharedLetters = typedLetterCount - (1 + typedLetterCount / 4)
         let maxLengthGap = max(2, bytes.count / 3)
         let maxCost = 3.0
         var scratch: [Double] = []
@@ -110,7 +114,10 @@ public final class SpellingEngine: @unchecked Sendable {
             }
 
             let soundsAlike = entry.phoneticKeys.contains(where: { typedKeys.contains($0) })
-            if abs(entry.bytes.count - bytes.count) > maxLengthGap && !soundsAlike { continue }
+            if !soundsAlike {
+                if abs(entry.bytes.count - bytes.count) > maxLengthGap { continue }
+                if (entry.letterMask & typedMask).nonzeroBitCount < minSharedLetters { continue }
+            }
 
             var cost = EditCost.distance(bytes, entry.bytes, limit: maxCost, scratch: &scratch)
             if soundsAlike { cost = min(cost, 0.5 + 0.3 * cost) }
