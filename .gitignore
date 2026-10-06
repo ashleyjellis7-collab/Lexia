@@ -1,0 +1,17 @@
+# Xcode
+Lexia.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+build/
+App/Info.plist
+Keyboard/Info.plist
+App/*.entitlements
+Keyboard/*.entitlements
+
+# SwiftPM
+.build/
+.swiftpm/
+Package.resolved
+
+.DS_Store
