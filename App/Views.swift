@@ -152,6 +152,16 @@ struct SettingsView: View {
                 } header: {
                     Text("My words")
                 }
+
+                Section {
+                    LabeledContent("Words you use", value: "\(model.learnedSummary.words)")
+                    LabeledContent("Typos it fixes your way", value: "\(model.learnedSummary.fixes)")
+                    Button("Forget what Lexia has learned", role: .destructive) { model.resetLearning() }
+                } header: {
+                    Text("Learning")
+                } footer: {
+                    Text("Lexia learns from your typing, only on this iPhone: words you use often come first, a fix you pick (like “luke” → like) is used automatically next time, and corrections you undo aren't made again.")
+                }
             }
             .navigationTitle("Settings")
             .onAppear { model.reloadWords() }

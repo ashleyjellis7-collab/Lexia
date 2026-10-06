@@ -31,6 +31,7 @@ final class AppModel: ObservableObject {
     }
     @Published var apiKey: String
     @Published var personalWords: [String]
+    @Published var learnedSummary = (words: 0, fixes: 0)
     @Published var jevTestResult: String?
     @Published var isTestingJev = false
 
@@ -54,6 +55,14 @@ final class AppModel: ObservableObject {
 
     func reloadWords() {
         personalWords = SettingsStore.shared.personalWords
+        learnedSummary = LearningModel(data: SettingsStore.shared.learningData).summary
+    }
+
+    /// Forgets everything the keyboard learned from your typing.
+    func resetLearning() {
+        let empty = LearningModel()
+        SettingsStore.shared.learningData = empty.save()
+        learnedSummary = (0, 0)
     }
 
     /// Sends one sample decision to Jev to check the key and connection.

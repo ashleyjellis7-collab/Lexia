@@ -157,6 +157,13 @@ final class SuggestionPipelineTests: XCTestCase {
         XCTAssertEqual(b.autocorrect, "there")
     }
 
+    func testJevBeingUnsureDoesNotUndoAConfidentFix() async {
+        // Jev leans towards the typed word but isn't sure: keep the on-device fix.
+        let p = pipeline(.answering("abov", confidence: 0.5, typedIsIntended: 0.6))
+        let refined = await p.refine(p.local(for: TypingContext(before: "it should be ", word: "abov")))
+        XCTAssertEqual(refined.autocorrect, "above")
+    }
+
     func testFailuresFallBackToOnDevice() async {
         let p = pipeline(MockTransport { _ in (500, "oops") })
         let local = p.local(for: TypingContext(before: "", word: "becuz"))

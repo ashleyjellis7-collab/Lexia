@@ -100,6 +100,13 @@ final class SettingsStore {
         }
     }
 
+    /// What the keyboard has learned from your typing (see `LearningModel`).
+    var learningData: Data? {
+        get { read(learningKey) }
+        set { if let newValue { write(newValue, learningKey) } }
+    }
+    private let learningKey = "learning.v1"
+
     func addPersonalWord(_ word: String) {
         let w = word.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !w.isEmpty, !personalWords.contains(where: { $0.caseInsensitiveCompare(w) == .orderedSame }) else { return }

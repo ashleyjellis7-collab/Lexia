@@ -9,6 +9,8 @@ public final class Lexicon: @unchecked Sendable {
     public struct Entry: Sendable {
         /// How the word should be written (`I`, `Monday`, `don't`).
         public let word: String
+        /// Lowercase form, used as a lookup key.
+        public let key: String
         /// Lowercase ASCII bytes used for matching.
         public let bytes: [UInt8]
         public let frequency: Int
@@ -41,6 +43,7 @@ public final class Lexicon: @unchecked Sendable {
             index[lower] = entries.count
             entries.append(Entry(
                 word: word,
+                key: lower,
                 bytes: Array(lower.utf8),
                 frequency: frequency,
                 weight: log10(Double(max(frequency, 1))) / maxLog,

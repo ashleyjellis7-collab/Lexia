@@ -37,7 +37,7 @@ public enum EditCost {
                     for (c2, b) in row2.enumerated() where a != b {
                         let x1 = Double(c1) + 0.5 * Double(r1)
                         let x2 = Double(c2) + 0.5 * Double(r2)
-                        if abs(x1 - x2) <= 1.0 { set([String(decoding: [a, b], as: UTF8.self)], 0.75) }
+                        if abs(x1 - x2) <= 1.0 { set([String(decoding: [a, b], as: UTF8.self)], 0.55) }
                     }
                 }
             }

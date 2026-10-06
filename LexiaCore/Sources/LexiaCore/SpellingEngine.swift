@@ -55,9 +55,13 @@ public final class SpellingEngine: @unchecked Sendable {
         "theyve": "they've", "wouldve": "would've", "couldve": "could've", "shouldve": "should've",
     ]
 
-    public init(lexicon: Lexicon, personalWords: [String] = []) {
+    /// What this writer's typing has taught Lexia (usage, picked fixes, undos).
+    public let learning: LearningModel
+
+    public init(lexicon: Lexicon, personalWords: [String] = [], learning: LearningModel = LearningModel()) {
         self.lexicon = lexicon
         self.personalWords = Set(personalWords.map { $0.lowercased() })
+        self.learning = learning
     }
 
     /// Words the writer has told us are right (kept, learned, or from contacts).
@@ -123,17 +127,30 @@ public final class SpellingEngine: @unchecked Sendable {
             if soundsAlike { cost = min(cost, 0.5 + 0.3 * cost) }
             guard cost <= maxCost else { continue }
 
-            var score = Self.score(cost: cost, weight: entry.weight)
+            var score = Self.score(cost: cost, weight: entry.weight) + learning.usageBoost(entry.key)
             if entry.bytes.count <= 2 && bytes.count >= 4 { score -= 1 }
             candidates.append(Candidate(word: entry.word, editCost: cost, soundsAlike: soundsAlike,
                                         weight: entry.weight, score: score))
         }
 
         candidates.sort { $0.score > $1.score }
+
+        // A fix this writer has picked before goes to the top.
+        let learnedFix = learning.learnedFix(for: lower)
+        if let fix = learnedFix {
+            let fixLower = fix.word.lowercased()
+            let cost = candidates.first { $0.word.lowercased() == fixLower }?.editCost
+                ?? EditCost.distance(bytes, Array(fixLower.utf8), scratch: &scratch)
+            candidates.removeAll { $0.word.lowercased() == fixLower }
+            let top = (candidates.first?.score ?? 0) + 1 + Double(min(fix.strength, 5)) * 0.2
+            candidates.insert(Candidate(word: fix.word, editCost: cost, soundsAlike: false,
+                                        weight: lexicon.entry(for: fixLower)?.weight ?? 0.5, score: top), at: 0)
+        }
         candidates = Array(candidates.prefix(limit))
 
         let probabilities = Self.softmax(
-            typed: known ? (lower, Self.score(cost: 0, weight: lexicon.entry(for: lower)?.weight ?? 0.5)) : nil,
+            typed: known ? (lower, Self.score(cost: 0, weight: lexicon.entry(for: lower)?.weight ?? 0.5)
+                                    + learning.usageBoost(lower)) : nil,
             candidates: candidates
         )
 
@@ -142,7 +159,8 @@ public final class SpellingEngine: @unchecked Sendable {
             isKnownWord: known,
             candidates: candidates,
             completions: completions,
-            autocorrect: autocorrect(typed: typed, lower: lower, known: known, candidates: candidates),
+            autocorrect: autocorrect(typed: typed, lower: lower, known: known, candidates: candidates,
+                                     learnedFix: learnedFix),
             probabilities: probabilities
         )
     }
@@ -151,9 +169,16 @@ public final class SpellingEngine: @unchecked Sendable {
         -1.6 * cost + 1.8 * weight
     }
 
-    private func autocorrect(typed: String, lower: String, known: Bool, candidates: [Candidate]) -> String? {
+    private func autocorrect(typed: String, lower: String, known: Bool, candidates: [Candidate],
+                             learnedFix: (word: String, strength: Int)?) -> String? {
+        // A fix the writer keeps choosing: once for a misspelling, twice for a real word ("luke" → like).
+        if let fix = learnedFix, fix.strength >= (known ? 2 : 1) {
+            return Casing.apply(from: typed, to: fix.word)
+        }
         if isPersonal(lower) { return nil }
-        if let fix = Self.apostropheFixes[lower] { return Casing.apply(from: typed, to: fix) }
+        if let fix = Self.apostropheFixes[lower], !learning.isRejected(lower, fix) {
+            return Casing.apply(from: typed, to: fix)
+        }
         if known {
             // "i" → "I", "monday" → "Monday": only when the writer typed all lowercase.
             if let display = lexicon.entry(for: lower)?.word, display != lower, typed == lower {
@@ -161,7 +186,8 @@ public final class SpellingEngine: @unchecked Sendable {
             }
             return nil
         }
-        guard lower.count >= 2, let best = candidates.first, best.editCost <= 1.5 else { return nil }
+        guard lower.count >= 2, let best = candidates.first, best.editCost <= 1.5,
+              !learning.isRejected(lower, best.word) else { return nil }
         if candidates.count > 1, best.score - candidates[1].score < 0.35 { return nil }
         return Casing.apply(from: typed, to: best.word)
     }

@@ -124,20 +124,23 @@ public final class SuggestionPipeline: @unchecked Sendable {
         let ranked = blended.sorted { $0.value > $1.value }.map(\.key)
         guard let best = ranked.first, let bestProbability = blended[best] else { return set }
 
+        // Jev can redirect or confirm a correction, but it only overrules the
+        // on-device fix when it's sure the typed word was meant.
+        let localFix = local.autocorrect?.lowercased()
+        let jevKeepsTyped = best == typedLower && decision.typedIsIntended >= 0.85
         var autocorrect: String?
-        if best != typedLower {
-            if engine.isKnown(typedLower) {
-                // Real-word mix-ups are only changed when Jev itself is very sure.
-                if decision.typedIsIntended < 0.15 && decision.choice == best && decision.confidence >= 0.85 {
-                    autocorrect = best
-                }
-            } else if decision.typedIsIntended < 0.4 && bestProbability >= 0.5 {
+        if engine.isKnown(typedLower) {
+            if best != typedLower, decision.typedIsIntended < 0.15, decision.choice == best,
+               decision.confidence >= 0.85 {
+                // Real-word mix-up ("form" → from) that Jev is very sure about.
                 autocorrect = best
+            } else if !jevKeepsTyped {
+                autocorrect = localFix   // "i" → "I", "dont" → "don't", learned fixes
             }
-        } else if let localFix = local.autocorrect,
-                  localFix.lowercased() == typedLower || decision.typedIsIntended < 0.5 {
-            // Keep case-only fixes ("i" → "I"), and the on-device fix when Jev is unsure.
-            autocorrect = localFix.lowercased()
+        } else if best != typedLower, bestProbability >= 0.4, !engine.learning.isRejected(typedLower, best) {
+            autocorrect = best
+        } else if !jevKeepsTyped {
+            autocorrect = localFix
         }
 
         let display = displayForms(local: local)

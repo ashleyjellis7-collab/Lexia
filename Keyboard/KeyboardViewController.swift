@@ -27,6 +27,8 @@ final class KeyboardViewController: UIInputViewController {
     private let speech = AVSpeechSynthesizer()
     private let haptics = UIImpactFeedbackGenerator(style: .light)
 
+    private let learning = LearningModel(data: SettingsStore.shared.learningData)
+
     /// The lexicon is loaded once per extension process.
     private static var sharedLexicon: Lexicon?
 
@@ -67,10 +69,43 @@ final class KeyboardViewController: UIInputViewController {
         state.settings = SettingsStore.shared.load()
         pipeline?.mode = state.settings.autocorrectMode
         pipeline?.engine.learn(SettingsStore.shared.personalWords)
+        reloadLearningIfNeeded()
         configureJev()
         updateTraits()
         updateAutoShift()
         refresh()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        saveLearning(force: true)
+    }
+
+    // MARK: - Learning
+
+    /// Reloads what was learned, picking up a reset made in the Lexia app.
+    /// (Anything new was saved when the keyboard last disappeared.)
+    private func reloadLearningIfNeeded() {
+        if learning.unsavedChanges == 0 { learning.load(SettingsStore.shared.learningData) }
+    }
+
+    private func saveLearning(force: Bool = false) {
+        guard force ? learning.unsavedChanges > 0 : learning.unsavedChanges >= 15 else { return }
+        SettingsStore.shared.learningData = learning.save()
+    }
+
+    /// Don't learn from (or send) text typed into sensitive fields.
+    private var learningAllowedHere: Bool { jevAllowedHere }
+
+    private func noteUse(_ word: String) {
+        guard learningAllowedHere, !word.isEmpty else { return }
+        learning.recordUse(word)
+        saveLearning()
+    }
+
+    private func noteCorrection(from typed: String, to chosen: String) {
+        guard learningAllowedHere, !typed.isEmpty else { return }
+        learning.recordCorrection(from: typed, to: chosen)
     }
 
     override func viewWillLayoutSubviews() {
@@ -102,7 +137,8 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func makePipeline(_ lexicon: Lexicon) {
-        let engine = SpellingEngine(lexicon: lexicon, personalWords: SettingsStore.shared.personalWords)
+        let engine = SpellingEngine(lexicon: lexicon, personalWords: SettingsStore.shared.personalWords,
+                                    learning: learning)
         let pipeline = SuggestionPipeline(engine: engine)
         pipeline.mode = state.settings.autocorrectMode
         self.pipeline = pipeline
@@ -295,9 +331,12 @@ final class KeyboardViewController: UIInputViewController {
             for _ in 0..<context.word.count { textDocumentProxy.deleteBackward() }
             textDocumentProxy.insertText(replacement + terminator)
             lastAutocorrection = (context.word, replacement, terminator)
+            noteCorrection(from: context.word, to: replacement)
+            noteUse(replacement)
         } else {
             textDocumentProxy.insertText(terminator)
             lastAutocorrection = nil
+            noteUse(context.word)
         }
         if !context.word.isEmpty { scheduleReview() }
     }
@@ -309,6 +348,7 @@ final class KeyboardViewController: UIInputViewController {
             for _ in 0..<(c.replacement.count + c.terminator.count) { textDocumentProxy.deleteBackward() }
             textDocumentProxy.insertText(c.original)
             lastAutocorrection = nil
+            if learningAllowedHere { learning.recordRejection(from: c.original, to: c.replacement) }
             learn(c.original)
             return
         }
@@ -375,17 +415,21 @@ final class KeyboardViewController: UIInputViewController {
                 if (textDocumentProxy.documentContextBeforeInput ?? "").hasSuffix(tail) {
                     for _ in 0..<tail.count { textDocumentProxy.deleteBackward() }
                     textDocumentProxy.insertText(fix.replacement + context.word)
+                    noteCorrection(from: fix.word, to: fix.correctedWord)
                 }
             }
             state.reviewFix = nil
         case .keepTyped:
             if !(pipeline?.engine.isKnown(context.word) ?? true) { learn(context.word) }
+            noteUse(context.word)
             textDocumentProxy.insertText(" ")
             lastAutocorrection = nil
         case .correction, .completion:
             for _ in 0..<context.word.count { textDocumentProxy.deleteBackward() }
             textDocumentProxy.insertText(suggestion.text + " ")
             lastAutocorrection = nil
+            if suggestion.kind == .correction { noteCorrection(from: context.word, to: suggestion.text) }
+            noteUse(suggestion.text)
             scheduleReview()
         }
         updateAutoShift()
