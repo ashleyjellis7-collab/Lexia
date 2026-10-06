@@ -180,9 +180,11 @@ public final class SpellingEngine: @unchecked Sendable {
             return Casing.apply(from: typed, to: fix)
         }
         if known {
-            // "i" → "I", "monday" → "Monday": only when the writer typed all lowercase.
-            if let display = lexicon.entry(for: lower)?.word, display != lower, typed == lower {
-                return display
+            // "i" → "I", "monday" → "Monday": only when the writer typed all lowercase,
+            // and not when a much more common word is a slip away ("luke" is probably "like").
+            if let entry = lexicon.entry(for: lower), entry.word != lower, typed == lower,
+               !candidates.contains(where: { $0.editCost <= 1.0 && $0.weight > entry.weight + 0.05 }) {
+                return entry.word
             }
             return nil
         }
