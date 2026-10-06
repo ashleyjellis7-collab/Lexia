@@ -34,24 +34,24 @@ The client mirrors the wire format of TypeSafe's official SDK: `POST https://api
 | `LexiaCore/` | Swift package with the spelling engine, phonetic codes, the Jev client and reranker, the suggestion pipeline and unit tests. Platform-independent. |
 | `Keyboard/` | The keyboard extension (`UIInputViewController` + SwiftUI keys and suggestion bar). |
 | `App/` | Companion app: setup steps, appearance, corrections, API key + "Test Jev", personal words, a "Try it" pad. |
-| `Shared/` | Settings (App Group), Keychain storage, font registration, colour themes. |
+| `Shared/` | Settings and API key (shared via the Keychain), font registration, colour themes. |
 | `Fonts/` | OpenDyslexic Regular/Bold (SIL Open Font License). |
 | `project.yml` | [XcodeGen](https://github.com/yonaskolb/XcodeGen) spec for the Xcode project. |
 
 ## Build and run
 
-Requirements: a Mac with Xcode 15 or later, and iOS 16 or later.
+Requirements: a Mac with Xcode 16 or later, an iPhone on iOS 16 or later, and a free Apple ID.
 
-```sh
-brew install xcodegen
-xcodegen            # creates Lexia.xcodeproj
-open Lexia.xcodeproj
-```
+1. Download this branch (green **Code** button → **Download ZIP**) and unzip it.
+2. Double-click `Lexia.xcodeproj` to open it in Xcode.
+3. Click the blue **Lexia** project icon at the top of the left sidebar. Then, for **both** targets (`Lexia` and `LexiaKeyboard`), open **Signing & Capabilities** and choose your Apple ID under **Team**.
+4. Plug in your iPhone, choose it at the top of the Xcode window, and press ▶ (Run).
+5. On the phone, go to **Settings → General → Keyboard → Keyboards → Add New Keyboard… → Lexia**, then tap **Lexia** and turn on **Allow Full Access**.
+6. In the Lexia app, open **Settings**, paste your TypeSafe API key and tap **Test Jev**.
 
-1. In `project.yml`, set `DEVELOPMENT_TEAM`. To run on a device, also change `app.lexia` and the App Group (`group.app.lexia`) to identifiers your team owns. Then re-run `xcodegen`.
-2. Run the **Lexia** scheme on your iPhone.
-3. On the phone, go to **Settings → General → Keyboard → Keyboards → Add New Keyboard… → Lexia**, then turn on **Allow Full Access**.
-4. In the Lexia app, open **Settings**, paste your TypeSafe API key (from [console.typesafe.ai](https://console.typesafe.ai/)) and tap **Test Jev**.
+If Xcode says the bundle identifier isn't available, change `LEXIA_BUNDLE_PREFIX` (project ▸ Build Settings) to something unique, such as `com.yourname.lexia`.
+
+`Lexia.xcodeproj` is generated from `project.yml` by [XcodeGen](https://github.com/yonaskolb/XcodeGen). If you edit `project.yml`, run `brew install xcodegen && xcodegen`.
 
 Run the engine tests with `cd LexiaCore && swift test`.
 

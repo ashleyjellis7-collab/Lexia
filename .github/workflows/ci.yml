@@ -19,24 +19,6 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate project
-        run: xcodegen generate
-      - name: Print generated project (base64)
-        run: |
-          tar czf - Lexia.xcodeproj/project.pbxproj App/Info.plist App/Lexia.entitlements Keyboard/Info.plist Keyboard/LexiaKeyboard.entitlements | base64 > gen.b64
-          echo "GEN-BEGIN"; cat gen.b64; echo "GEN-END"
-      - name: Upload generated project
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-xcodeproj
-          path: |
-            Lexia.xcodeproj
-            App/Info.plist
-            App/Lexia.entitlements
-            Keyboard/Info.plist
-            Keyboard/LexiaKeyboard.entitlements
       - name: Build for iOS Simulator
         run: |
           set -o pipefail

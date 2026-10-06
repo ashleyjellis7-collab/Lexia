@@ -1,0 +1,566 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		03675962AF11FE5760461416 /* KeyboardState.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9003AB5A0935F93014B904A /* KeyboardState.swift */; };
+		130420CC4D1C0BBF2A6D1333 /* LexiaKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1438E232780F456213136FF5 /* LexiaKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		1B464B232D05E9A3A6CA9D7C /* OpenDyslexic-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 4EF2FF01B45A89DD57898AC5 /* OpenDyslexic-Bold.otf */; };
+		1D47F9F7DBEFADD22FAC1390 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9A0F8755905550F3C6E422 /* KeyboardViewController.swift */; };
+		1F4ECADBBC78F0DD29A69659 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D91D2AA4540AF6B39C24B3E /* Theme.swift */; };
+		202DB3B87E727B626C61C813 /* LexiaSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD6030DF207CA07247E4393 /* LexiaSettings.swift */; };
+		2D764BDB414E45ECF609AE5E /* OpenDyslexic-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = E75F6C0C9659A737D1A386E8 /* OpenDyslexic-OFL.txt */; };
+		5B1CE7821166FFD44D83E010 /* LexiaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E58912261C8F92DB9DFB0A70 /* LexiaApp.swift */; };
+		5BEDF156832D93DAC7B0E3C8 /* OpenDyslexic-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 841043B9420168D3683734F2 /* OpenDyslexic-Regular.otf */; };
+		5E1D7F89F9A85C508A646CCA /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345015DCEC14DD70415AD6F9 /* KeyboardView.swift */; };
+		6D12890304674F365176DBD0 /* OpenDyslexic-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = E75F6C0C9659A737D1A386E8 /* OpenDyslexic-OFL.txt */; };
+		6EB3EF71A68F108A9F6A7B7B /* OpenDyslexic-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 841043B9420168D3683734F2 /* OpenDyslexic-Regular.otf */; };
+		74209AAD8279A564E584C95E /* LexiaCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4854DE30217885AFAC7B3D3C /* LexiaCore */; };
+		871B873B2AEB14537D0EFB27 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1694094C7B8DAC1775256836 /* KeychainStore.swift */; };
+		9A03EA7802D05D3851691BB4 /* LexiaSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD6030DF207CA07247E4393 /* LexiaSettings.swift */; };
+		BA3AAE79EA15004E124B5492 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1694094C7B8DAC1775256836 /* KeychainStore.swift */; };
+		D145053ADDA63702FD87AD2E /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D91D2AA4540AF6B39C24B3E /* Theme.swift */; };
+		D7CEE105628B02CB5FA09D34 /* LexiaCore in Frameworks */ = {isa = PBXBuildFile; productRef = 57ED469D99BC03923C43C00C /* LexiaCore */; };
+		EA5E31E727425C82D9A9AA33 /* Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 566E9C99CFD7F3F7BDE19A66 /* Views.swift */; };
+		F4929194C5CA139DD8166359 /* OpenDyslexic-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 4EF2FF01B45A89DD57898AC5 /* OpenDyslexic-Bold.otf */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4A41B8784B08F6ABECE90DF5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 409D4CD2909383AA77EC4576 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F28A4C9A38ECC756232DC8D9;
+			remoteInfo = LexiaKeyboard;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		921834CF22F2DC36BD1F8C83 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				130420CC4D1C0BBF2A6D1333 /* LexiaKeyboard.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0C9A0F8755905550F3C6E422 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
+		1438E232780F456213136FF5 /* LexiaKeyboard.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = LexiaKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		1694094C7B8DAC1775256836 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		345015DCEC14DD70415AD6F9 /* KeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardView.swift; sourceTree = "<group>"; };
+		3F4473C4379EF57240DB97EB /* LexiaKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LexiaKeyboard.entitlements; sourceTree = "<group>"; };
+		40F79F99F680E822A2BDD2F4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		4EF2FF01B45A89DD57898AC5 /* OpenDyslexic-Bold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "OpenDyslexic-Bold.otf"; sourceTree = "<group>"; };
+		566E9C99CFD7F3F7BDE19A66 /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
+		6642398A8BDB6A709607EF53 /* Lexia.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lexia.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		67E98242F97DE87BE19FC89B /* LexiaCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LexiaCore; path = LexiaCore; sourceTree = SOURCE_ROOT; };
+		6BD6030DF207CA07247E4393 /* LexiaSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexiaSettings.swift; sourceTree = "<group>"; };
+		7D91D2AA4540AF6B39C24B3E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		841043B9420168D3683734F2 /* OpenDyslexic-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "OpenDyslexic-Regular.otf"; sourceTree = "<group>"; };
+		BA958831C18173858769CF98 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		C2C28F971FB0EEC0BD674D9D /* Lexia.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Lexia.entitlements; sourceTree = "<group>"; };
+		E58912261C8F92DB9DFB0A70 /* LexiaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexiaApp.swift; sourceTree = "<group>"; };
+		E75F6C0C9659A737D1A386E8 /* OpenDyslexic-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OpenDyslexic-OFL.txt"; sourceTree = "<group>"; };
+		E9003AB5A0935F93014B904A /* KeyboardState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardState.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		6EB3B2BA9EF2E975C9EBE369 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				74209AAD8279A564E584C95E /* LexiaCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8F13DF700E0502863E870F79 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D7CEE105628B02CB5FA09D34 /* LexiaCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		3217A88D4364A80E4415158B = {
+			isa = PBXGroup;
+			children = (
+				9A34F59AB9AA34C1883F2215 /* App */,
+				61AD8F416B468855A1409F96 /* Fonts */,
+				E23F3B85C0AF892407524916 /* Keyboard */,
+				8796FC62A321C37B28B9A08E /* Packages */,
+				35FE52EE9A351ACFEF5EC71A /* Shared */,
+				FC1FEF6D8BE369F11FA3113E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		35FE52EE9A351ACFEF5EC71A /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				1694094C7B8DAC1775256836 /* KeychainStore.swift */,
+				6BD6030DF207CA07247E4393 /* LexiaSettings.swift */,
+				7D91D2AA4540AF6B39C24B3E /* Theme.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		61AD8F416B468855A1409F96 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				4EF2FF01B45A89DD57898AC5 /* OpenDyslexic-Bold.otf */,
+				E75F6C0C9659A737D1A386E8 /* OpenDyslexic-OFL.txt */,
+				841043B9420168D3683734F2 /* OpenDyslexic-Regular.otf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		8796FC62A321C37B28B9A08E /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				67E98242F97DE87BE19FC89B /* LexiaCore */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		9A34F59AB9AA34C1883F2215 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				BA958831C18173858769CF98 /* Info.plist */,
+				C2C28F971FB0EEC0BD674D9D /* Lexia.entitlements */,
+				E58912261C8F92DB9DFB0A70 /* LexiaApp.swift */,
+				566E9C99CFD7F3F7BDE19A66 /* Views.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		E23F3B85C0AF892407524916 /* Keyboard */ = {
+			isa = PBXGroup;
+			children = (
+				40F79F99F680E822A2BDD2F4 /* Info.plist */,
+				E9003AB5A0935F93014B904A /* KeyboardState.swift */,
+				345015DCEC14DD70415AD6F9 /* KeyboardView.swift */,
+				0C9A0F8755905550F3C6E422 /* KeyboardViewController.swift */,
+				3F4473C4379EF57240DB97EB /* LexiaKeyboard.entitlements */,
+			);
+			path = Keyboard;
+			sourceTree = "<group>";
+		};
+		FC1FEF6D8BE369F11FA3113E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				6642398A8BDB6A709607EF53 /* Lexia.app */,
+				1438E232780F456213136FF5 /* LexiaKeyboard.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		14E554B4DDBC892B2B85A045 /* Lexia */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0DA34F823F53426E3C54FCDD /* Build configuration list for PBXNativeTarget "Lexia" */;
+			buildPhases = (
+				248FE2FE61F90E968CE4AF2F /* Sources */,
+				2EA48FB20B7645A59A9146B6 /* Resources */,
+				6EB3B2BA9EF2E975C9EBE369 /* Frameworks */,
+				921834CF22F2DC36BD1F8C83 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				81498D15D15CF7DE9DBE92C5 /* PBXTargetDependency */,
+			);
+			name = Lexia;
+			packageProductDependencies = (
+				4854DE30217885AFAC7B3D3C /* LexiaCore */,
+			);
+			productName = Lexia;
+			productReference = 6642398A8BDB6A709607EF53 /* Lexia.app */;
+			productType = "com.apple.product-type.application";
+		};
+		F28A4C9A38ECC756232DC8D9 /* LexiaKeyboard */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CDE2378FABD4F0F49F56D31C /* Build configuration list for PBXNativeTarget "LexiaKeyboard" */;
+			buildPhases = (
+				7906B60E2D8064F85BC9E9D6 /* Sources */,
+				4E0F6629DA8549C53726C767 /* Resources */,
+				8F13DF700E0502863E870F79 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LexiaKeyboard;
+			packageProductDependencies = (
+				57ED469D99BC03923C43C00C /* LexiaCore */,
+			);
+			productName = LexiaKeyboard;
+			productReference = 1438E232780F456213136FF5 /* LexiaKeyboard.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		409D4CD2909383AA77EC4576 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					14E554B4DDBC892B2B85A045 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					F28A4C9A38ECC756232DC8D9 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 28061D470C4D7C660DC8A1B2 /* Build configuration list for PBXProject "Lexia" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 3217A88D4364A80E4415158B;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E52D4909FD86019F1EDEFBCD /* XCLocalSwiftPackageReference "LexiaCore" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = FC1FEF6D8BE369F11FA3113E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				14E554B4DDBC892B2B85A045 /* Lexia */,
+				F28A4C9A38ECC756232DC8D9 /* LexiaKeyboard */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		2EA48FB20B7645A59A9146B6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F4929194C5CA139DD8166359 /* OpenDyslexic-Bold.otf in Resources */,
+				2D764BDB414E45ECF609AE5E /* OpenDyslexic-OFL.txt in Resources */,
+				6EB3EF71A68F108A9F6A7B7B /* OpenDyslexic-Regular.otf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E0F6629DA8549C53726C767 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1B464B232D05E9A3A6CA9D7C /* OpenDyslexic-Bold.otf in Resources */,
+				6D12890304674F365176DBD0 /* OpenDyslexic-OFL.txt in Resources */,
+				5BEDF156832D93DAC7B0E3C8 /* OpenDyslexic-Regular.otf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		248FE2FE61F90E968CE4AF2F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				871B873B2AEB14537D0EFB27 /* KeychainStore.swift in Sources */,
+				5B1CE7821166FFD44D83E010 /* LexiaApp.swift in Sources */,
+				202DB3B87E727B626C61C813 /* LexiaSettings.swift in Sources */,
+				D145053ADDA63702FD87AD2E /* Theme.swift in Sources */,
+				EA5E31E727425C82D9A9AA33 /* Views.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7906B60E2D8064F85BC9E9D6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				03675962AF11FE5760461416 /* KeyboardState.swift in Sources */,
+				5E1D7F89F9A85C508A646CCA /* KeyboardView.swift in Sources */,
+				1D47F9F7DBEFADD22FAC1390 /* KeyboardViewController.swift in Sources */,
+				BA3AAE79EA15004E124B5492 /* KeychainStore.swift in Sources */,
+				9A03EA7802D05D3851691BB4 /* LexiaSettings.swift in Sources */,
+				1F4ECADBBC78F0DD29A69659 /* Theme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		81498D15D15CF7DE9DBE92C5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F28A4C9A38ECC756232DC8D9 /* LexiaKeyboard */;
+			targetProxy = 4A41B8784B08F6ABECE90DF5 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		3B28A073937168B09949FCB2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Keyboard/LexiaKeyboard.entitlements;
+				INFOPLIST_FILE = Keyboard/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LEXIA_BUNDLE_PREFIX).keyboard";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		464072D1CDE24A368E99FE4C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LEXIA_BUNDLE_PREFIX = io.github.ashleyjellis7.lexia;
+				LEXIA_KEYCHAIN_GROUP = "$(AppIdentifierPrefix)$(LEXIA_BUNDLE_PREFIX).shared";
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		5FC4AC0484DA74D8FF68EFAF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/Lexia.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LEXIA_BUNDLE_PREFIX)";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BFCCB4B1CD67F32BE07A502E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LEXIA_BUNDLE_PREFIX = io.github.ashleyjellis7.lexia;
+				LEXIA_KEYCHAIN_GROUP = "$(AppIdentifierPrefix)$(LEXIA_BUNDLE_PREFIX).shared";
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C807FADCA5FE6250F1E2238F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Keyboard/LexiaKeyboard.entitlements;
+				INFOPLIST_FILE = Keyboard/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LEXIA_BUNDLE_PREFIX).keyboard";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DC06841361172264F38BF651 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/Lexia.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LEXIA_BUNDLE_PREFIX)";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0DA34F823F53426E3C54FCDD /* Build configuration list for PBXNativeTarget "Lexia" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5FC4AC0484DA74D8FF68EFAF /* Debug */,
+				DC06841361172264F38BF651 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		28061D470C4D7C660DC8A1B2 /* Build configuration list for PBXProject "Lexia" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BFCCB4B1CD67F32BE07A502E /* Debug */,
+				464072D1CDE24A368E99FE4C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CDE2378FABD4F0F49F56D31C /* Build configuration list for PBXNativeTarget "LexiaKeyboard" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C807FADCA5FE6250F1E2238F /* Debug */,
+				3B28A073937168B09949FCB2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		E52D4909FD86019F1EDEFBCD /* XCLocalSwiftPackageReference "LexiaCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = LexiaCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4854DE30217885AFAC7B3D3C /* LexiaCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LexiaCore;
+		};
+		57ED469D99BC03923C43C00C /* LexiaCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LexiaCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 409D4CD2909383AA77EC4576 /* Project object */;
+}
