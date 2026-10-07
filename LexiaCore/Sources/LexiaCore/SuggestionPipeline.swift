@@ -217,20 +217,25 @@ public final class SuggestionPipeline: @unchecked Sendable {
     }
 
     private func jevDecision(context: TypingContext, options: [String]) async -> JevDecision? {
-        cacheLock.lock()
-        let cached = cache[context]
-        cacheLock.unlock()
-        if let cached { return cached }
-
+        if let cached = cachedDecision(for: context) { return cached }
         guard let reranker, let decision = try? await reranker.decide(context: context, options: options) else {
             return nil
         }
-        cacheLock.lock()
+        storeDecision(decision, for: context)
+        return decision
+    }
+
+    // Locking lives in synchronous helpers: NSLock mustn't be used directly in async code.
+    private func cachedDecision(for context: TypingContext) -> JevDecision? {
+        cacheLock.lock(); defer { cacheLock.unlock() }
+        return cache[context]
+    }
+
+    private func storeDecision(_ decision: JevDecision, for context: TypingContext) {
+        cacheLock.lock(); defer { cacheLock.unlock() }
         cache[context] = decision
         cacheOrder.append(context)
         if cacheOrder.count > 64 { cache.removeValue(forKey: cacheOrder.removeFirst()) }
-        cacheLock.unlock()
-        return decision
     }
 
     /// Lays out the bar: [keep typed] [best] [next], respecting the mode.
