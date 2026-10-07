@@ -21,6 +21,8 @@ public final class ContextModel: @unchecked Sendable {
     private let followTotals: [Double]
     /// Total count of pairs ending with each word (a unigram estimate).
     private let wordTotals: [Double]
+    /// Smallest pair count kept for each first word: an upper bound for pairs that were trimmed.
+    private let minimumKept: [Double]
     private let grandTotal: Double
 
     public enum LoadError: Error { case badFormat }
@@ -57,11 +59,13 @@ public final class ContextModel: @unchecked Sendable {
 
         var follow = [Double](repeating: 0, count: vocabulary.count)
         var words = [Double](repeating: 0, count: vocabulary.count)
+        var minimum = [Double](repeating: .infinity, count: vocabulary.count)
         for (key, count) in zip(keys, counts) {
             let previous = Int(key >> 32), next = Int(key & 0xFFFF_FFFF)
             guard previous < vocabulary.count, next < vocabulary.count else { throw LoadError.badFormat }
             follow[previous] += Double(count)
             words[next] += Double(count)
+            minimum[previous] = min(minimum[previous], Double(count))
         }
         var index: [String: UInt32] = [:]
         for (i, word) in vocabulary.enumerated() { index[word] = UInt32(i) }
@@ -72,6 +76,7 @@ public final class ContextModel: @unchecked Sendable {
         self.counts = counts
         self.followTotals = follow
         self.wordTotals = words
+        self.minimumKept = minimum
         self.grandTotal = max(words.reduce(0, +), 1)
     }
 
@@ -100,9 +105,14 @@ public final class ContextModel: @unchecked Sendable {
     /// log10(P(word | previous) / P(word)). nil when there's nothing to go on.
     public func contextLift(of word: String, after previous: String) -> Double? {
         guard let p = id(previous), followTotals[Int(p)] >= 50, let w = id(word) else { return nil }
-        let given = (Double(count(p, w)) + 0.1) / followTotals[Int(p)]
         let overall = (wordTotals[Int(w)] + 1) / grandTotal
-        return log10(given / overall)
+        let pairCount = count(p, w)
+        guard pairCount > 0 else {
+            // The pair was trimmed, so it's rarer than the rarest pair kept for `previous`.
+            // That only counts against `word` if even that upper bound is below average ("he us").
+            return min(0, log10((minimumKept[Int(p)] / followTotals[Int(p)]) / overall))
+        }
+        return log10((Double(pairCount) / followTotals[Int(p)]) / overall)
     }
 
     /// The words most likely to come next after `previous` (`<s>` for a new sentence).

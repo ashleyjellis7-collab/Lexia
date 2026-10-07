@@ -65,7 +65,7 @@ public final class SpellingEngine: @unchecked Sendable {
     static let contextWeight = 0.6
     /// How much better (in score) a near-miss must fit the sentence before a
     /// real word is swapped for it ("he us" → is).
-    static let realWordSwapMargin = 1.0
+    static let realWordSwapMargin = 0.7
 
     public init(lexicon: Lexicon, personalWords: [String] = [], learning: LearningModel = LearningModel()) {
         self.lexicon = lexicon
@@ -111,11 +111,14 @@ public final class SpellingEngine: @unchecked Sendable {
     }
 
     /// - Parameter previous: the word before (lowercase), or `<s>` at the start of a sentence.
-    public func analyze(_ rawTyped: String, previous: String? = nil, limit: Int = 5) -> SpellingResult {
+    /// - Parameter isDictionaryWord: the system dictionary knows the word ("woofs", "typos"),
+    ///   so it is never treated as a misspelling.
+    public func analyze(_ rawTyped: String, previous: String? = nil, isDictionaryWord: Bool = false,
+                        limit: Int = 5) -> SpellingResult {
         let typed = TextScanner.normalized(rawTyped)
         let lower = typed.lowercased()
         let bytes = Array(lower.utf8)
-        let known = isKnown(lower)
+        let known = isKnown(lower) || isDictionaryWord
 
         // Only plain English letters are analysed; anything else is left alone.
         guard !bytes.isEmpty, bytes.allSatisfy({ $0 < 128 }) else {
@@ -213,10 +216,14 @@ public final class SpellingEngine: @unchecked Sendable {
         if let fix = Self.apostropheFixes[lower], !learning.isRejected(lower, fix) {
             return Casing.apply(from: typed, to: fix)
         }
+        if known && lexicon.entry(for: lower) == nil {
+            return nil   // a real word Lexia knows too little about to second-guess
+        }
         if known {
             // A real word that doesn't fit the sentence, one slip away from one that
             // clearly does: "he us" → is, "going ti" → to.
-            if let typedScore, let swap = candidates.first(where: {
+            // (Look-alike homophones such as its/it's are left to Jev's look-back review.)
+            if let typedScore, Homophones.alternatives(for: lower).isEmpty, let swap = candidates.first(where: {
                 $0.editCost <= 0.6 && $0.score - typedScore >= Self.realWordSwapMargin
                     && !learning.isRejected(lower, $0.word)
             }) {

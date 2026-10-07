@@ -8,11 +8,14 @@ public struct TypingContext: Sendable, Hashable {
     public var word: String
     /// Text after the cursor, if any.
     public var after: String
+    /// The system dictionary knows `word` (it may be missing from Lexia's own list).
+    public var isDictionaryWord: Bool
 
-    public init(before: String, word: String, after: String = "") {
+    public init(before: String, word: String, after: String = "", isDictionaryWord: Bool = false) {
         self.before = String(before.suffix(300))
         self.word = word
         self.after = String(after.prefix(120))
+        self.isDictionaryWord = isDictionaryWord
     }
 }
 

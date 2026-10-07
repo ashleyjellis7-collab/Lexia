@@ -201,11 +201,25 @@ final class KeyboardViewController: UIInputViewController {
 
     // MARK: - Suggestions
 
+    private let textChecker = UITextChecker()
+
+    /// Uses the iPhone's own dictionary, which knows far more words than Lexia's list.
+    private func isDictionaryWord(_ word: String) -> Bool {
+        guard word.count > 1 else { return false }
+        let range = NSRange(location: 0, length: (word as NSString).length)
+        return ["en_GB", "en_US"].contains { language in
+            UITextChecker.availableLanguages.contains(language)
+                && textChecker.rangeOfMisspelledWord(in: word, range: range, startingAt: 0, wrap: false,
+                                                     language: language).location == NSNotFound
+        }
+    }
+
     private func currentContext() -> TypingContext {
         let before = textDocumentProxy.documentContextBeforeInput ?? ""
         let after = textDocumentProxy.documentContextAfterInput ?? ""
         let word = TextScanner.trailingWord(in: before)
-        return TypingContext(before: String(before.dropLast(word.count)), word: word, after: after)
+        return TypingContext(before: String(before.dropLast(word.count)), word: word, after: after,
+                             isDictionaryWord: isDictionaryWord(word))
     }
 
     private func refresh() {

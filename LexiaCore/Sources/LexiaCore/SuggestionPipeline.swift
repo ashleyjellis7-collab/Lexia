@@ -94,7 +94,8 @@ public final class SuggestionPipeline: @unchecked Sendable {
     // MARK: - On-device
 
     public func local(for context: TypingContext) -> SuggestionSet {
-        let result = engine.analyze(context.word, previous: TextScanner.previousWord(in: context.before))
+        let result = engine.analyze(context.word, previous: TextScanner.previousWord(in: context.before),
+                                    isDictionaryWord: context.isDictionaryWord)
         return compose(context: context, local: result, ranked: result.candidates.map(\.word),
                        autocorrect: result.autocorrect, source: .device)
     }
