@@ -66,4 +66,5 @@ Run the engine tests with `cd LexiaCore && swift test`.
 
 - **OpenDyslexic** by Abbie Gonzalez, SIL Open Font License 1.1 (`Fonts/OpenDyslexic-OFL.txt`).
 - Word frequencies come from [FrequencyWords](https://github.com/hermitdave/FrequencyWords) (MIT, Hermit Dave), filtered against the [SCOWL](http://wordlist.aspell.net/) English word lists.
+- Word-pair (bigram) counts come from the [Google Books Ngram](https://books.google.com/ngrams) fiction corpus (v3, 2020), licensed [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), trimmed to common pairs.
 - **Jev** and the System One API are from [TypeSafe AI](https://typesafe.ai).
