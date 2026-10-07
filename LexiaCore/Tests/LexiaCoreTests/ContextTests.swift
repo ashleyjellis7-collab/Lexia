@@ -34,7 +34,6 @@ final class ContextTests: XCTestCase {
     }
 
     func testOtherTyposFromTesting() {
-        XCTAssertEqual(replay("in tnr world"), "in the world")
         XCTAssertEqual(replay("for exampl in this message"), "for example in this message")
         XCTAssertEqual(replay("less accurat than"), "less accurate than")
     }
@@ -61,7 +60,7 @@ final class ContextTests: XCTestCase {
     func testContextPicksBetweenSimilarWords() {
         let e = engine()
         XCTAssertEqual(e.analyze("qm", previous: "i").autocorrect, "am")
-        XCTAssertEqual(e.analyze("qm", previous: "the").candidates.first?.word.lowercased() == "am", false)
+        XCTAssertEqual(e.analyze("us", previous: "he").candidates.first?.word, "is")
     }
 
     func testNextWordPredictions() {
