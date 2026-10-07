@@ -78,6 +78,9 @@ public enum EditCost {
     /// `from`: the rules ending in byte `c` are `rules[ruleStart[c]..<ruleStart[c + 1]]`.
     private static let ruleTable: (rules: [Rule], start: [Int]) = {
         let raw: [(String, String, Double)] = [
+            ("sten", "sen", 0.3), ("sten", "ssen", 0.3), ("ften", "fen", 0.3), ("ften", "ffen", 0.3),
+            ("dne", "n", 0.35), ("one", "wun", 0.3), ("one", "un", 0.4), ("ome", "um", 0.35),
+            ("are", "er", 0.4), ("are", "air", 0.3),
             ("ph", "f", 0.25), ("gh", "f", 0.4), ("kn", "n", 0.25), ("wr", "r", 0.25), ("wh", "w", 0.25),
             ("ck", "k", 0.2), ("ck", "c", 0.3), ("qu", "kw", 0.3), ("x", "ks", 0.3),
             ("tion", "shun", 0.4), ("tion", "shon", 0.4), ("tion", "shin", 0.5), ("sion", "shun", 0.4),

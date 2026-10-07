@@ -25,7 +25,12 @@ public enum Phonetic {
         if w.hasSuffix("mb") { w.removeLast() }
 
         let replacements: [(String, String)] = [
-            ("ould", "ud"), ("sch", "sk"), ("tch", "ch"), ("dge", "j"), ("tion", "shn"), ("sion", "shn"),
+            // Silent letters: listen, often, Wednesday; "one" sounds like "wun".
+            ("sten", "sen"), ("ften", "fen"), ("dnes", "ns"), ("one", "wun"),
+            ("ould", "ud"), ("sch", "sk"),
+            // "sh" sounds: conscience, special, initial, delicious.
+            ("scie", "Xe"), ("scio", "Xo"), ("cia", "Xa"), ("cie", "Xe"), ("cio", "Xo"), ("tia", "Xa"), ("tiou", "Xou"),
+            ("tch", "ch"), ("dge", "j"), ("tion", "shn"), ("sion", "shn"),
             ("cious", "shs"), ("ph", "f"), ("ck", "k"), ("sh", "X"), ("ch", "X"), ("th", "0"),
             ("qu", "kw"), ("q", "k"), ("x", "ks"), ("z", "s"),
         ]
@@ -54,6 +59,7 @@ public enum Phonetic {
                     continue
                 }
                 if i > 0, c == "h" || c == "w" { continue }
+                if c == "d" { c = "t" }   // "nuanst" sounds like "nuanced"
                 if out.last == c { continue }
                 out.append(c)
             }

@@ -53,6 +53,8 @@ public final class SpellingEngine: @unchecked Sendable {
         "hasnt": "hasn't", "hadnt": "hadn't", "im": "I'm", "ive": "I've", "youre": "you're",
         "theyre": "they're", "thats": "that's", "whats": "what's", "youve": "you've",
         "theyve": "they've", "wouldve": "would've", "couldve": "could've", "shouldve": "should've",
+        // Common shortenings.
+        "coz": "because", "cuz": "because", "bcuz": "because",
     ]
 
     /// What this writer's typing has taught Lexia (usage, picked fixes, undos).
@@ -151,7 +153,8 @@ public final class SpellingEngine: @unchecked Sendable {
                 if (entry.letterMask & typedMask).nonzeroBitCount < minSharedLetters { continue }
             }
 
-            var cost = EditCost.distance(bytes, entry.bytes, limit: maxCost, scratch: &scratch)
+            // Sound-alikes may be spelled very differently ("nolij" → knowledge), so look further.
+            var cost = EditCost.distance(bytes, entry.bytes, limit: soundsAlike ? 8 : maxCost, scratch: &scratch)
             if soundsAlike { cost = min(cost, 0.5 + 0.3 * cost) }
             guard cost <= maxCost else { continue }
 
@@ -239,7 +242,7 @@ public final class SpellingEngine: @unchecked Sendable {
         }
         guard lower.count >= 2, let best = candidates.first, best.editCost <= 1.5,
               !learning.isRejected(lower, best.word) else { return nil }
-        if candidates.count > 1, best.score - candidates[1].score < 0.35 { return nil }
+        if candidates.count > 1, best.score - candidates[1].score < 0.25 { return nil }
         return Casing.apply(from: typed, to: best.word)
     }
 
