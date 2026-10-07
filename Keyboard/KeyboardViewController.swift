@@ -31,6 +31,7 @@ final class KeyboardViewController: UIInputViewController {
 
     /// The lexicon is loaded once per extension process.
     private static var sharedLexicon: Lexicon?
+    private static var sharedContext: ContextModel?
 
     // MARK: - Lifecycle
 
@@ -127,18 +128,21 @@ final class KeyboardViewController: UIInputViewController {
         }
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let lexicon = try? Lexicon.bundledEnglish() else { return }
-            await self?.didLoad(lexicon)
+            let context = try? ContextModel.bundledEnglish()
+            await self?.didLoad(lexicon, context: context)
         }
     }
 
-    private func didLoad(_ lexicon: Lexicon) {
+    private func didLoad(_ lexicon: Lexicon, context: ContextModel?) {
         Self.sharedLexicon = lexicon
+        Self.sharedContext = context
         makePipeline(lexicon)
     }
 
     private func makePipeline(_ lexicon: Lexicon) {
         let engine = SpellingEngine(lexicon: lexicon, personalWords: SettingsStore.shared.personalWords,
                                     learning: learning)
+        engine.context = Self.sharedContext
         let pipeline = SuggestionPipeline(engine: engine)
         pipeline.mode = state.settings.autocorrectMode
         self.pipeline = pipeline
@@ -213,7 +217,7 @@ final class KeyboardViewController: UIInputViewController {
         guard let pipeline, !context.word.isEmpty, state.settings.autocorrectMode != .off else {
             state.currentSet = nil
             state.jevWorking = false
-            state.suggestions = state.reviewFix.map { [$0] } ?? []
+            showPredictions(context)
             return
         }
         let askJev = pipeline.reranker != nil && jevAllowedHere
@@ -246,8 +250,17 @@ final class KeyboardViewController: UIInputViewController {
         if let set = state.currentSet, set.context == currentContext() {
             show(set)
         } else {
-            state.suggestions = state.reviewFix.map { [$0] } ?? []
+            showPredictions(currentContext())
         }
+    }
+
+    /// Before a word is started: a pending ↺ fix, then likely next words.
+    private func showPredictions(_ context: TypingContext) {
+        var chips: [Suggestion] = state.reviewFix.map { [$0] } ?? []
+        if context.word.isEmpty, let pipeline {
+            chips += pipeline.predictions(for: context).prefix(3 - chips.count)
+        }
+        state.suggestions = chips
     }
 
     /// After a word is finished, ask Jev whether one of the last two words was
@@ -269,7 +282,7 @@ final class KeyboardViewController: UIInputViewController {
     // MARK: - Keys
 
     private func handle(_ key: KeyKind) {
-        if hasFullAccess { haptics.impactOccurred() }
+        if hasFullAccess && state.settings.keyVibration { haptics.impactOccurred() }
         if key != .space { lastSpace = nil }
         switch key {
         case .character(let s):
@@ -424,6 +437,10 @@ final class KeyboardViewController: UIInputViewController {
             noteUse(context.word)
             textDocumentProxy.insertText(" ")
             lastAutocorrection = nil
+        case .prediction:
+            textDocumentProxy.insertText(suggestion.text + " ")
+            lastAutocorrection = nil
+            noteUse(suggestion.text)
         case .correction, .completion:
             for _ in 0..<context.word.count { textDocumentProxy.deleteBackward() }
             textDocumentProxy.insertText(suggestion.text + " ")

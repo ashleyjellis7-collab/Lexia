@@ -139,11 +139,22 @@ final class SuggestionPipelineTests: XCTestCase {
         XCTAssertEqual(refined.autocorrect, "dinosaur")
     }
 
-    func testJevKeepsAWordTheWriterMeant() async {
+    func testJevKeepsARealWordTheWriterMeant() async {
         // Jev is confident the typed word is right: nothing is changed.
-        let p = pipeline(.answering("becuz", confidence: 0.9, typedIsIntended: 0.95))
-        let refined = await p.refine(p.local(for: TypingContext(before: "my band is called ", word: "becuz")))
+        let p = pipeline(.answering("form", confidence: 0.9, typedIsIntended: 0.95))
+        let refined = await p.refine(p.local(for: TypingContext(before: "please fill in the ", word: "form")))
         XCTAssertNil(refined.autocorrect)
+    }
+
+    func testJevCannotKeepAMisspelling() async {
+        // A non-word is never offered to Jev as an option, so the fix still happens.
+        let transport = MockTransport.answering("because", confidence: 0.9, typedIsIntended: 0.95)
+        let p = pipeline(transport)
+        let refined = await p.refine(p.local(for: TypingContext(before: "I left ", word: "becuz")))
+        XCTAssertEqual(refined.autocorrect, "because")
+        let body = try? JSONSerialization.jsonObject(with: transport.requests.first?.httpBody ?? Data()) as? [String: Any]
+        let options = ((body?["questions"] as? [String: Any])?["intended_word"] as? [String: Any])?["criteria"] as? [String: Any]
+        XCTAssertNil(options?["becuz"])
     }
 
     func testRealWordMixUpsNeedVeryHighConfidence() async {

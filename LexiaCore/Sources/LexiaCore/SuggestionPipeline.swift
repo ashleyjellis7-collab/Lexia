@@ -11,6 +11,8 @@ public struct Suggestion: Sendable, Hashable, Identifiable {
         case completion
         /// A correction for a word already typed, e.g. "their" → "there".
         case fixPrevious
+        /// A likely next word, shown before you start typing one.
+        case prediction
     }
 
     public let text: String
@@ -92,9 +94,20 @@ public final class SuggestionPipeline: @unchecked Sendable {
     // MARK: - On-device
 
     public func local(for context: TypingContext) -> SuggestionSet {
-        let result = engine.analyze(context.word)
+        let result = engine.analyze(context.word, previous: TextScanner.previousWord(in: context.before))
         return compose(context: context, local: result, ranked: result.candidates.map(\.word),
                        autocorrect: result.autocorrect, source: .device)
+    }
+
+    /// Likely next words for when no word has been started yet.
+    public func predictions(for context: TypingContext) -> [Suggestion] {
+        guard mode != .off, context.word.isEmpty else { return [] }
+        let previous = TextScanner.previousWord(in: context.before)
+        let atSentenceStart = previous == ContextModel.sentenceStart
+        return engine.predictions(after: previous).map { word in
+            let shown = atSentenceStart ? word.prefix(1).uppercased() + word.dropFirst() : word
+            return Suggestion(text: shown, kind: .prediction)
+        }
     }
 
     // MARK: - Jev
@@ -189,9 +202,10 @@ public final class SuggestionPipeline: @unchecked Sendable {
 
     private func options(for local: SpellingResult) -> [String]? {
         let typed = local.typed.lowercased()
-        var options = [typed]
+        // A misspelling isn't offered as an option: Jev picks which real word was meant.
+        var options = engine.isKnown(typed) ? [typed] : []
         for word in Homophones.alternatives(for: typed) + local.candidates.map({ $0.word.lowercased() })
-        where !options.contains(word) {
+        where !options.contains(word) && word != typed {
             options.append(word)
         }
         if let fix = local.autocorrect?.lowercased(), !options.contains(fix) { options.append(fix) }

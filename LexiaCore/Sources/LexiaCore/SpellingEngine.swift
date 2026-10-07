@@ -58,6 +58,15 @@ public final class SpellingEngine: @unchecked Sendable {
     /// What this writer's typing has taught Lexia (usage, picked fixes, undos).
     public let learning: LearningModel
 
+    /// Which words tend to follow which; set once at start-up.
+    public var context: ContextModel?
+
+    /// Strength of the word-before context in scoring.
+    static let contextWeight = 0.6
+    /// How much better (in score) a near-miss must fit the sentence before a
+    /// real word is swapped for it ("he us" → is).
+    static let realWordSwapMargin = 1.0
+
     public init(lexicon: Lexicon, personalWords: [String] = [], learning: LearningModel = LearningModel()) {
         self.lexicon = lexicon
         self.personalWords = Set(personalWords.map { $0.lowercased() })
@@ -86,7 +95,23 @@ public final class SpellingEngine: @unchecked Sendable {
         return personalWords.contains(word)
     }
 
-    public func analyze(_ rawTyped: String, limit: Int = 5) -> SpellingResult {
+    /// Score bonus for how well `word` fits after `previous` (0 without context).
+    func contextBonus(_ word: String, after previous: String?) -> Double {
+        guard let previous, let lift = context?.contextLift(of: word, after: previous) else { return 0 }
+        return Self.contextWeight * max(-2, min(2.5, lift))
+    }
+
+    /// The words most likely to come next, written properly ("i" → "I").
+    public func predictions(after previous: String, limit: Int = 3) -> [String] {
+        guard let context else { return [] }
+        return context.predictions(after: previous, limit: limit + 3)
+            .filter { $0 != ContextModel.sentenceStart }
+            .map { lexicon.entry(for: $0)?.word ?? $0 }
+            .prefix(limit).map { $0 }
+    }
+
+    /// - Parameter previous: the word before (lowercase), or `<s>` at the start of a sentence.
+    public func analyze(_ rawTyped: String, previous: String? = nil, limit: Int = 5) -> SpellingResult {
         let typed = TextScanner.normalized(rawTyped)
         let lower = typed.lowercased()
         let bytes = Array(lower.utf8)
@@ -107,14 +132,14 @@ public final class SpellingEngine: @unchecked Sendable {
         let maxCost = 3.0
         var scratch: [Double] = []
         var candidates: [Candidate] = []
-        var completions: [String] = []
+        var prefixMatches: [Lexicon.Entry] = []
 
         for entry in lexicon.entries {
             if entry.bytes == bytes { continue }
 
-            if completions.count < 3, bytes.count >= 2, entry.bytes.count > bytes.count,
+            if prefixMatches.count < 40, bytes.count >= 2, entry.bytes.count > bytes.count,
                entry.bytes.starts(with: bytes) {
-                completions.append(entry.word)
+                prefixMatches.append(entry)
             }
 
             let soundsAlike = entry.phoneticKeys.contains(where: { typedKeys.contains($0) })
@@ -128,6 +153,7 @@ public final class SpellingEngine: @unchecked Sendable {
             guard cost <= maxCost else { continue }
 
             var score = Self.score(cost: cost, weight: entry.weight) + learning.usageBoost(entry.key)
+                + contextBonus(entry.key, after: previous)
             if entry.bytes.count <= 2 && bytes.count >= 4 { score -= 1 }
             candidates.append(Candidate(word: entry.word, editCost: cost, soundsAlike: soundsAlike,
                                         weight: entry.weight, score: score))
@@ -148,9 +174,16 @@ public final class SpellingEngine: @unchecked Sendable {
         }
         candidates = Array(candidates.prefix(limit))
 
+        // Completions: common words starting with what was typed, best fit for the sentence first.
+        let completions = prefixMatches
+            .map { ($0.word, 1.8 * $0.weight + learning.usageBoost($0.key) + contextBonus($0.key, after: previous)) }
+            .sorted { $0.1 > $1.1 }
+            .prefix(3).map(\.0)
+
+        let typedScore = Self.score(cost: 0, weight: lexicon.entry(for: lower)?.weight ?? 0.5)
+            + learning.usageBoost(lower) + contextBonus(lower, after: previous)
         let probabilities = Self.softmax(
-            typed: known ? (lower, Self.score(cost: 0, weight: lexicon.entry(for: lower)?.weight ?? 0.5)
-                                    + learning.usageBoost(lower)) : nil,
+            typed: known ? (lower, typedScore) : nil,
             candidates: candidates
         )
 
@@ -160,7 +193,8 @@ public final class SpellingEngine: @unchecked Sendable {
             candidates: candidates,
             completions: completions,
             autocorrect: autocorrect(typed: typed, lower: lower, known: known, candidates: candidates,
-                                     learnedFix: learnedFix),
+                                     learnedFix: learnedFix,
+                                     typedScore: previous != nil && context != nil ? typedScore : nil),
             probabilities: probabilities
         )
     }
@@ -170,7 +204,7 @@ public final class SpellingEngine: @unchecked Sendable {
     }
 
     private func autocorrect(typed: String, lower: String, known: Bool, candidates: [Candidate],
-                             learnedFix: (word: String, strength: Int)?) -> String? {
+                             learnedFix: (word: String, strength: Int)?, typedScore: Double?) -> String? {
         // A fix the writer keeps choosing: once for a misspelling, twice for a real word ("luke" → like).
         if let fix = learnedFix, fix.strength >= (known ? 2 : 1) {
             return Casing.apply(from: typed, to: fix.word)
@@ -180,6 +214,14 @@ public final class SpellingEngine: @unchecked Sendable {
             return Casing.apply(from: typed, to: fix)
         }
         if known {
+            // A real word that doesn't fit the sentence, one slip away from one that
+            // clearly does: "he us" → is, "going ti" → to.
+            if let typedScore, let swap = candidates.first(where: {
+                $0.editCost <= 0.6 && $0.score - typedScore >= Self.realWordSwapMargin
+                    && !learning.isRejected(lower, $0.word)
+            }) {
+                return Casing.apply(from: typed, to: swap.word)
+            }
             // "i" → "I", "monday" → "Monday": only when the writer typed all lowercase,
             // and not when a much more common word is a slip away ("luke" is probably "like").
             if let entry = lexicon.entry(for: lower), entry.word != lower, typed == lower,

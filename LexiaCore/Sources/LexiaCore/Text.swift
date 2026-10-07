@@ -19,6 +19,17 @@ public enum TextScanner {
         String(text.prefix(while: isWordCharacter))
     }
 
+    /// The word before the one being typed, lowercased, or `<s>` at the start
+    /// of a sentence. `before` is the text before the current word.
+    public static func previousWord(in before: String) -> String {
+        let trimmed = before.trimmingCharacters(in: .whitespaces)
+        guard let last = trimmed.last, !".!?\n".contains(last) else { return ContextModel.sentenceStart }
+        let stripped = String(trimmed.reversed().drop(while: { !isWordCharacter($0) && !".!?\n".contains($0) }).reversed())
+        guard let end = stripped.last, isWordCharacter(end) else { return ContextModel.sentenceStart }
+        let word = normalized(trailingWord(in: stripped)).lowercased()
+        return word.isEmpty ? ContextModel.sentenceStart : word
+    }
+
     /// Normalises curly apostrophes so `don’t` and `don't` match the lexicon.
     public static func normalized(_ word: String) -> String {
         word.replacingOccurrences(of: "’", with: "'")

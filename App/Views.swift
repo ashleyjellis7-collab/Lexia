@@ -85,6 +85,7 @@ struct SettingsView: View {
                     }
                     Toggle("Spot mixed-up words (their/there)", isOn: $model.settings.reviewPreviousWords)
                     Toggle("Hold a suggestion to hear it", isOn: $model.settings.speakSuggestions)
+                    Toggle("Vibrate when typing", isOn: $model.settings.keyVibration)
                 } header: {
                     Text("Corrections")
                 } footer: {

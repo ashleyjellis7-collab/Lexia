@@ -38,6 +38,8 @@ struct LexiaSettings: Codable, Equatable {
     var reviewPreviousWords = true
     /// Long-press a suggestion to hear it read aloud.
     var speakSuggestions = true
+    /// Vibrate on each key press (needs Full Access).
+    var keyVibration = false
     var jevBaseURL = "https://api.typesafe.ai"
     var jevModel = "jev-latest"
 
@@ -56,6 +58,7 @@ struct LexiaSettings: Codable, Equatable {
         useJev = (try? c.decode(Bool.self, forKey: .useJev)) ?? d.useJev
         reviewPreviousWords = (try? c.decode(Bool.self, forKey: .reviewPreviousWords)) ?? d.reviewPreviousWords
         speakSuggestions = (try? c.decode(Bool.self, forKey: .speakSuggestions)) ?? d.speakSuggestions
+        keyVibration = (try? c.decode(Bool.self, forKey: .keyVibration)) ?? d.keyVibration
         jevBaseURL = (try? c.decode(String.self, forKey: .jevBaseURL)) ?? d.jevBaseURL
         jevModel = (try? c.decode(String.self, forKey: .jevModel)) ?? d.jevModel
     }
