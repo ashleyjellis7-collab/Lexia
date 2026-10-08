@@ -82,6 +82,9 @@ final class KeyboardState: ObservableObject {
     var currentSet: SuggestionSet?
     weak var inputController: UIInputViewController?
 
+    /// Where the last letter key was touched, relative to its centre (in key sizes).
+    var lastTouch: CGPoint?
+
     var onKey: (KeyKind) -> Void = { _ in }
     var onSuggestion: (Suggestion) -> Void = { _ in }
     var onSpeak: (String) -> Void = { _ in }

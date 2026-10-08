@@ -47,6 +47,7 @@ struct KeyView: View {
 
     @State private var pressed = false
     @State private var repeatTimer: Timer?
+    @State private var keySize: CGSize = .zero
 
     private var isFunctionKey: Bool {
         if case .character = spec.kind { return false }
@@ -64,6 +65,11 @@ struct KeyView: View {
                 label
             }
             .contentShape(Rectangle())
+            .background(GeometryReader { geo in
+                Color.clear
+                    .onAppear { keySize = geo.size }
+                    .onChange(of: geo.size) { keySize = $0 }
+            })
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { _ in
@@ -71,11 +77,20 @@ struct KeyView: View {
                         pressed = true
                         if spec.kind == .backspace { startRepeating() }
                     }
-                    .onEnded { _ in
+                    .onEnded { value in
                         pressed = false
                         if spec.kind == .backspace {
                             stopRepeating()
                         } else {
+                            if case .character = spec.kind, keySize.width > 0 {
+                                // Offset from the key's centre, in key pitches (key plus the gap around it).
+                                state.lastTouch = CGPoint(
+                                    x: (value.location.x - keySize.width / 2) / (keySize.width + KeyboardView.keySpacing),
+                                    y: (value.location.y - keySize.height / 2) / (keySize.height + KeyboardView.rowSpacing)
+                                )
+                            } else {
+                                state.lastTouch = nil
+                            }
                             state.onKey(spec.kind)
                         }
                     }
@@ -214,6 +229,8 @@ struct SuggestionBar: View {
                 return state.currentSet?.autocorrect != nil ? "“\(suggestion.text)”" : suggestion.text
             case .fixPrevious:
                 return "↺ \(suggestion.text)"
+            case .undoCorrection:
+                return "↩ \(suggestion.text)"
             default:
                 return suggestion.text
             }
@@ -241,6 +258,7 @@ struct SuggestionBar: View {
         switch suggestion.kind {
         case .keepTyped: return "Keep \(suggestion.text)"
         case .fixPrevious: return "Change \(suggestion.fix?.word ?? "") to \(suggestion.text)"
+        case .undoCorrection: return "Undo correction, keep \(suggestion.text)"
         default: return suggestion.isAutocorrect ? "\(suggestion.text), will be used" : suggestion.text
         }
     }

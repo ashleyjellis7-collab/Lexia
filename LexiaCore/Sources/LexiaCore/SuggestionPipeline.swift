@@ -13,6 +13,8 @@ public struct Suggestion: Sendable, Hashable, Identifiable {
         case fixPrevious
         /// A likely next word, shown before you start typing one.
         case prediction
+        /// Put back what was typed before an autocorrect ("↩ passprt").
+        case undoCorrection
     }
 
     public let text: String
@@ -95,7 +97,7 @@ public final class SuggestionPipeline: @unchecked Sendable {
 
     public func local(for context: TypingContext) -> SuggestionSet {
         let result = engine.analyze(context.word, previous: TextScanner.previousWord(in: context.before),
-                                    isDictionaryWord: context.isDictionaryWord)
+                                    isDictionaryWord: context.isDictionaryWord, touches: context.touches)
         return compose(context: context, local: result, ranked: result.candidates.map(\.word),
                        autocorrect: result.autocorrect, source: .device)
     }

@@ -13,6 +13,8 @@ public final class LearningModel: @unchecked Sendable {
     private struct Snapshot: Codable {
         var usage: [String: Int] = [:]
         var fixes: [String: [String: Int]] = [:]
+        /// How often each unknown word was deliberately kept (optional for older saves).
+        var keeps: [String: Int]? = nil
     }
 
     private let lock = NSLock()
@@ -82,6 +84,21 @@ public final class LearningModel: @unchecked Sendable {
     /// The writer chose `chosen` for what they typed (a picked suggestion or a kept autocorrect).
     public func recordCorrection(from typed: String, to chosen: String) {
         adjust(typed, chosen, by: 1)
+    }
+
+    /// The writer deliberately kept `word` as typed. Returns how many times they have.
+    /// A word is only treated as "theirs" after being kept twice, so one slip doesn't teach a typo.
+    @discardableResult
+    public func recordKeep(_ word: String) -> Int {
+        let k = Self.key(word)
+        guard !k.isEmpty else { return 0 }
+        lock.lock(); defer { lock.unlock() }
+        var keeps = state.keeps ?? [:]
+        keeps[k, default: 0] += 1
+        if keeps.count > 2000, let drop = keeps.keys.first(where: { $0 != k }) { keeps.removeValue(forKey: drop) }
+        state.keeps = keeps
+        unsavedChanges += 1
+        return keeps[k] ?? 0
     }
 
     /// The writer undid the change from `typed` to `rejected`.

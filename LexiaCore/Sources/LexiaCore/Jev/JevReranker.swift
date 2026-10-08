@@ -10,12 +10,16 @@ public struct TypingContext: Sendable, Hashable {
     public var after: String
     /// The system dictionary knows `word` (it may be missing from Lexia's own list).
     public var isDictionaryWord: Bool
+    /// Where each letter of `word` was touched, when known.
+    public var touches: [KeyTouch]
 
-    public init(before: String, word: String, after: String = "", isDictionaryWord: Bool = false) {
+    public init(before: String, word: String, after: String = "", isDictionaryWord: Bool = false,
+                touches: [KeyTouch] = []) {
         self.before = String(before.suffix(300))
         self.word = word
         self.after = String(after.prefix(120))
         self.isDictionaryWord = isDictionaryWord
+        self.touches = touches
     }
 }
 

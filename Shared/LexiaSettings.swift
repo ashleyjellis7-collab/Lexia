@@ -103,6 +103,12 @@ final class SettingsStore {
         }
     }
 
+    /// Whether the one-time clean-up of mistakenly learned words has run.
+    var didCleanPersonalWords: Bool {
+        get { read("cleanup.v1") != nil }
+        set { if newValue { write(Data([1]), "cleanup.v1") } }
+    }
+
     /// What the keyboard has learned from your typing (see `LearningModel`).
     var learningData: Data? {
         get { read(learningKey) }

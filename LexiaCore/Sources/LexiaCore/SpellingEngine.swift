@@ -115,8 +115,9 @@ public final class SpellingEngine: @unchecked Sendable {
     /// - Parameter previous: the word before (lowercase), or `<s>` at the start of a sentence.
     /// - Parameter isDictionaryWord: the system dictionary knows the word ("woofs", "typos"),
     ///   so it is never treated as a misspelling.
+    /// - Parameter touches: where each letter was touched, for telling slips onto a neighbouring key apart.
     public func analyze(_ rawTyped: String, previous: String? = nil, isDictionaryWord: Bool = false,
-                        limit: Int = 5) -> SpellingResult {
+                        touches: [KeyTouch] = [], limit: Int = 5) -> SpellingResult {
         let typed = TextScanner.normalized(rawTyped)
         let lower = typed.lowercased()
         let bytes = Array(lower.utf8)
@@ -128,6 +129,7 @@ public final class SpellingEngine: @unchecked Sendable {
                                   autocorrect: nil, probabilities: [:])
         }
 
+        let rowCosts = EditCost.touchRows(for: bytes, touches: touches)
         let typedKeys = Phonetic.keys(for: lower)
         let typedMask = Lexicon.letterMask(bytes)
         let typedLetterCount = typedMask.nonzeroBitCount
@@ -154,7 +156,8 @@ public final class SpellingEngine: @unchecked Sendable {
             }
 
             // Sound-alikes may be spelled very differently ("nolij" → knowledge), so look further.
-            var cost = EditCost.distance(bytes, entry.bytes, limit: soundsAlike ? 8 : maxCost, scratch: &scratch)
+            var cost = EditCost.distance(bytes, entry.bytes, limit: soundsAlike ? 8 : maxCost, scratch: &scratch,
+                                         rowCosts: rowCosts)
             if soundsAlike { cost = min(cost, 0.5 + 0.3 * cost) }
             guard cost <= maxCost else { continue }
 

@@ -22,6 +22,10 @@ final class KeyboardViewController: UIInputViewController {
     private var reviewTask: Task<Void, Never>?
 
     private var lastAutocorrection: (original: String, replacement: String, terminator: String)?
+    /// Where each letter of the current word was touched (for finger-slip correction).
+    private var touchLog: [KeyTouch] = []
+    /// After delete removes the space following an autocorrect, offers the original back.
+    private var pendingUndo: (original: String, replacement: String)?
     private var lastSpace: Date?
     private var lastShiftTap: Date?
     private let speech = AVSpeechSynthesizer()
@@ -143,6 +147,7 @@ final class KeyboardViewController: UIInputViewController {
         let engine = SpellingEngine(lexicon: lexicon, personalWords: SettingsStore.shared.personalWords,
                                     learning: learning)
         engine.context = Self.sharedContext
+        cleanUpPersonalWordsOnce(engine)
         let pipeline = SuggestionPipeline(engine: engine)
         pipeline.mode = state.settings.autocorrectMode
         self.pipeline = pipeline
@@ -218,13 +223,16 @@ final class KeyboardViewController: UIInputViewController {
         let before = textDocumentProxy.documentContextBeforeInput ?? ""
         let after = textDocumentProxy.documentContextAfterInput ?? ""
         let word = TextScanner.trailingWord(in: before)
+        // Only trust the touch log if it matches the word letter for letter (the cursor may have moved).
+        let touches = touchLog.map(\.letter) == Array(word.lowercased()) ? touchLog : []
         return TypingContext(before: String(before.dropLast(word.count)), word: word, after: after,
-                             isDictionaryWord: isDictionaryWord(word))
+                             isDictionaryWord: isDictionaryWord(word), touches: touches)
     }
 
     private func refresh() {
         suggestionTask?.cancel()
         let context = currentContext()
+        if let undo = pendingUndo, context.word != undo.replacement { pendingUndo = nil }
         if let fix = state.reviewFix?.fix, !context.before.hasSuffix(fix.original) {
             state.reviewFix = nil
         }
@@ -257,6 +265,10 @@ final class KeyboardViewController: UIInputViewController {
         state.currentSet = set
         var chips = set.suggestions
         if let fix = state.reviewFix { chips = [fix] + chips.prefix(2) }
+        if let undo = pendingUndo, set.context.word == undo.replacement {
+            chips = [Suggestion(text: undo.original, kind: .undoCorrection)]
+                + chips.filter { $0.kind != .keepTyped }.prefix(2)
+        }
         state.suggestions = chips
     }
 
@@ -325,6 +337,12 @@ final class KeyboardViewController: UIInputViewController {
             commitWord(terminator: s)
             return
         }
+        if TextScanner.trailingWord(in: textDocumentProxy.documentContextBeforeInput ?? "").isEmpty { touchLog = [] }
+        if let letter = s.first, s.count == 1, TextScanner.isWordCharacter(letter) {
+            let touch = state.lastTouch ?? .zero
+            touchLog.append(KeyTouch(letter: letter, dx: Double(touch.x), dy: Double(touch.y)))
+        }
+        state.lastTouch = nil
         let text = state.shift == .off ? s : s.uppercased()
         textDocumentProxy.insertText(text)
         lastAutocorrection = nil
@@ -349,6 +367,7 @@ final class KeyboardViewController: UIInputViewController {
     /// Finishes the current word with `terminator`, autocorrecting it if confident.
     private func commitWord(terminator: String) {
         let context = currentContext()
+        defer { touchLog = [] }
         // "a d" → "and": the space bar was hit instead of a nearby letter.
         if autocorrectAllowedHere, let fix = pipeline?.spaceSlipFix(before: context.before, word: context.word),
            (textDocumentProxy.documentContextBeforeInput ?? "").hasSuffix(fix.original) {
@@ -397,6 +416,14 @@ final class KeyboardViewController: UIInputViewController {
         // Backspace right after an autocorrect restores what was typed.
         if let c = lastAutocorrection,
            (textDocumentProxy.documentContextBeforeInput ?? "").hasSuffix(c.replacement + c.terminator) {
+            if !c.original.contains(" "), !c.replacement.contains(" "), c.terminator.count == 1 {
+                // Like Apple's keyboard: just delete the space and offer "↩ original" in the bar,
+                // so deleting to add a letter doesn't undo (and learn) the typo.
+                lastAutocorrection = nil
+                textDocumentProxy.deleteBackward()
+                pendingUndo = (c.original, c.replacement)
+                return
+            }
             for _ in 0..<(c.replacement.count + c.terminator.count) { textDocumentProxy.deleteBackward() }
             textDocumentProxy.insertText(c.original)
             lastAutocorrection = nil
@@ -404,10 +431,10 @@ final class KeyboardViewController: UIInputViewController {
             let originalWord = String(c.original.split(separator: " ").first ?? "")
             let replacementWord = String(c.replacement.split(separator: " ").first ?? "")
             if learningAllowedHere { learning.recordRejection(from: originalWord, to: replacementWord) }
-            if !c.original.trimmingCharacters(in: .whitespaces).contains(" ") { learn(c.original) }
             return
         }
         lastAutocorrection = nil
+        if !touchLog.isEmpty { touchLog.removeLast() }
         textDocumentProxy.deleteBackward()
     }
 
@@ -475,10 +502,17 @@ final class KeyboardViewController: UIInputViewController {
             }
             state.reviewFix = nil
         case .keepTyped:
-            if !(pipeline?.engine.isKnown(context.word) ?? true) { learn(context.word) }
-            noteUse(context.word)
+            keep(context.word)
             textDocumentProxy.insertText(" ")
             lastAutocorrection = nil
+        case .undoCorrection:
+            if let undo = pendingUndo, context.word == undo.replacement {
+                for _ in 0..<undo.replacement.count { textDocumentProxy.deleteBackward() }
+                textDocumentProxy.insertText(undo.original + " ")
+                if learningAllowedHere { learning.recordRejection(from: undo.original, to: undo.replacement) }
+                keep(undo.original)
+            }
+            pendingUndo = nil
         case .prediction:
             textDocumentProxy.insertText(suggestion.text + " ")
             lastAutocorrection = nil
@@ -493,6 +527,39 @@ final class KeyboardViewController: UIInputViewController {
         }
         updateAutoShift()
         refresh()
+    }
+
+    /// The writer chose their own spelling. It only becomes one of "My words"
+    /// after being kept twice and if it looks like a word, so slips aren't learned.
+    private func keep(_ word: String) {
+        guard learningAllowedHere, !word.isEmpty else { return }
+        noteUse(word)
+        guard let engine = pipeline?.engine, !engine.isKnown(word) else { return }
+        if learning.recordKeep(word) >= 2, Self.looksLikeWord(word) { learn(word) }
+    }
+
+    static func looksLikeWord(_ word: String) -> Bool {
+        let lower = word.lowercased()
+        guard lower.contains(where: { "aeiouy".contains($0) }) else { return word.count > 1 && word == word.uppercased() }
+        let unlikely = ["wj", "jw", "jy", "yj", "jk", "kj", "jg", "gj", "jb", "bj", "jx", "xj", "vj", "jv", "qz", "zq",
+                        "xz", "zx", "qw", "wq", "fq", "qf", "jq", "qj", "vq", "qv", "zj", "jz", "jh", "hj"]
+        return !unlikely.contains { lower.contains($0) }
+    }
+
+    /// One-time tidy-up of words learned by the old, over-eager rules:
+    /// keyboard-mash and near-misses of common words ("passprt", "peopl").
+    private func cleanUpPersonalWordsOnce(_ engine: SpellingEngine) {
+        let store = SettingsStore.shared
+        guard !store.didCleanPersonalWords else { return }
+        for word in store.personalWords {
+            let isAcronym = word.count > 1 && word == word.uppercased()
+            let nearMiss = engine.analyze(word.lowercased()).candidates.first.map { $0.editCost <= 1.0 && $0.weight >= 0.4 } ?? false
+            if !isAcronym && (!Self.looksLikeWord(word) || nearMiss) {
+                store.removePersonalWord(word)
+                engine.forget(word)
+            }
+        }
+        store.didCleanPersonalWords = true
     }
 
     private func learn(_ word: String) {

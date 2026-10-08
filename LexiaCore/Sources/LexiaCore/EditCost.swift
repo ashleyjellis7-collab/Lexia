@@ -19,7 +19,11 @@ public enum EditCost {
     static let apostrophe = UInt8(ascii: "'")
 
     /// 128×128 substitution-cost table.
-    private static let substitutionTable: [Double] = {
+    private static let substitutionTable: [Double] = buildTable(includeKeyboardNeighbours: true)
+    /// The same without keyboard neighbours, for when the exact touch point is known.
+    private static let dyslexiaTable: [Double] = buildTable(includeKeyboardNeighbours: false)
+
+    private static func buildTable(includeKeyboardNeighbours: Bool) -> [Double] {
         var table = [Double](repeating: 1.0, count: 128 * 128)
         func set(_ pairs: [String], _ cost: Double) {
             for pair in pairs {
@@ -31,7 +35,7 @@ public enum EditCost {
         }
         // Keyboard neighbours (fat-finger slips).
         let rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"].map { Array($0.utf8) }
-        for (r1, row1) in rows.enumerated() {
+        for (r1, row1) in rows.enumerated() where includeKeyboardNeighbours {
             for (c1, a) in row1.enumerated() {
                 for (r2, row2) in rows.enumerated() where abs(r1 - r2) <= 1 {
                     for (c2, b) in row2.enumerated() where a != b {
@@ -51,7 +55,49 @@ public enum EditCost {
         set(["bd", "pq", "bp", "dq", "mw", "nu", "mn", "il", "ce", "ao", "hn", "ft"], 0.45)
         for i in 0..<128 { table[i * 128 + i] = 0 }
         return table
-    }()
+    }
+
+    // MARK: - Touch position
+
+    /// Centre of each letter key on Lexia's layout, in key pitches (x) and rows (y).
+    static func keyCentre(_ byte: UInt8) -> (x: Double, y: Double)? {
+        let rows: [(String, Double)] = [("qwertyuiop", 0.5), ("asdfghjkl", 1.0), ("zxcvbnm", 2.05)]
+        for (r, (letters, start)) in rows.enumerated() {
+            if let c = Array(letters.utf8).firstIndex(of: byte) { return (Double(c) + start, Double(r) + 0.5) }
+        }
+        return nil
+    }
+
+    /// Per-letter substitution costs for a typed word using where each key was
+    /// touched. A tap on the edge of "q" next to "a" makes "a" a cheap fix; a
+    /// tap dead in the middle of a key makes swapping it for a neighbour expensive.
+    /// Returns nil unless there is one touch per typed letter.
+    public static func touchRows(for typed: [UInt8], touches: [KeyTouch]) -> [Double]? {
+        guard touches.count == typed.count, !touches.isEmpty else { return nil }
+        var rows = [Double](repeating: 1, count: typed.count * 128)
+        for (i, a) in typed.enumerated() {
+            let touch = touches[i]
+            let base = i * 128
+            guard a < 128, touch.letter.asciiValue == a, let centre = keyCentre(a) else {
+                for b in 0..<128 { rows[base + b] = a < 128 ? substitutionTable[Int(a) * 128 + b] : (a == b ? 0 : 1) }
+                continue
+            }
+            let point = (x: centre.x + touch.dx, y: centre.y + touch.dy)
+            let fromTyped = (touch.dx * touch.dx + touch.dy * touch.dy).squareRoot()
+            for b in 0..<128 {
+                var cost = dyslexiaTable[Int(a) * 128 + b]
+                if let other = keyCentre(UInt8(b)), b != Int(a) {
+                    let dx = point.x - other.x, dy = point.y - other.y
+                    let fromOther = (dx * dx + dy * dy).squareRoot()
+                    if fromOther <= 1.6 {
+                        cost = min(cost, max(0.15, min(1.0, 0.15 + 0.85 * (fromOther - fromTyped))))
+                    }
+                }
+                rows[base + b] = cost
+            }
+        }
+        return rows
+    }
 
     /// A rewrite of up to 4 bytes into up to 4 bytes, packed so the inner loop
     /// does no reference counting.
@@ -147,20 +193,29 @@ public enum EditCost {
     /// Weighted distance between `a` and `b`, or `.infinity` as soon as it is
     /// certain to exceed `limit`. `scratch` is reused between calls to avoid
     /// allocating a matrix per word.
-    public static func distance(_ a: [UInt8], _ b: [UInt8], limit: Double = .infinity, scratch: inout [Double]) -> Double {
+    /// - Parameter rowCosts: optional per-typed-letter substitution costs from `touchRows`.
+    public static func distance(_ a: [UInt8], _ b: [UInt8], limit: Double = .infinity, scratch: inout [Double],
+                                rowCosts: [Double]? = nil) -> Double {
         let n = a.count, m = b.count
         let width = m + 1
         let size = (n + 1) * width + n + m
         if scratch.count < size { scratch = [Double](repeating: 0, count: size) }
+        if let rowCosts, rowCosts.count == n * 128 {
+            return rowCosts.withUnsafeBufferPointer { run(a, b, limit, &scratch, $0) }
+        }
+        return run(a, b, limit, &scratch, nil)
+    }
 
-        return a.withUnsafeBufferPointer { A in
+    private static func run(_ a: [UInt8], _ b: [UInt8], _ limit: Double, _ scratch: inout [Double],
+                            _ rowCosts: UnsafeBufferPointer<Double>?) -> Double {
+        a.withUnsafeBufferPointer { A in
             b.withUnsafeBufferPointer { B in
                 scratch.withUnsafeMutableBufferPointer { buffer in
                     rules.withUnsafeBufferPointer { R in
                         ruleStart.withUnsafeBufferPointer { S in
                             substitutionTable.withUnsafeBufferPointer { T in
                                 baseIndel.withUnsafeBufferPointer { base in
-                                    kernel(A, B, buffer, R, S, T, base, limit)
+                                    kernel(A, B, buffer, R, S, T, base, limit, rowCosts)
                                 }
                             }
                         }
@@ -174,7 +229,7 @@ public enum EditCost {
                                _ buffer: UnsafeMutableBufferPointer<Double>,
                                _ R: UnsafeBufferPointer<Rule>, _ S: UnsafeBufferPointer<Int>,
                                _ T: UnsafeBufferPointer<Double>, _ base: UnsafeBufferPointer<Double>,
-                               _ limit: Double) -> Double {
+                               _ limit: Double, _ rowCosts: UnsafeBufferPointer<Double>?) -> Double {
         let n = A.count, m = B.count
         let width = m + 1
         let matrix = (n + 1) * width
@@ -200,7 +255,16 @@ public enum EditCost {
                 var v = buffer[prev + j] + deleteA
                 let insert = buffer[row + j - 1] + buffer[matrix + n + j - 1]
                 if insert < v { v = insert }
-                let substitutionCost: Double = ai == bj ? 0 : (ai < 128 && bj < 128 ? T[subRow + Int(bj)] : 1)
+                let substitutionCost: Double
+                if ai == bj {
+                    substitutionCost = 0
+                } else if bj >= 128 {
+                    substitutionCost = 1
+                } else if let rowCosts {
+                    substitutionCost = rowCosts[(i - 1) * 128 + Int(bj)]
+                } else {
+                    substitutionCost = ai < 128 ? T[subRow + Int(bj)] : 1
+                }
                 let substitute = buffer[prev + j - 1] + substitutionCost
                 if substitute < v { v = substitute }
                 if i > 1, j > 1, ai == B[j - 2], A[i - 2] == bj, ai != A[i - 2] {

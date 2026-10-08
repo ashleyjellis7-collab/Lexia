@@ -108,3 +108,44 @@ final class PhoneticAndCostTests: XCTestCase {
         XCTAssertEqual(TextScanner.wordRanges(in: "their going!").count, 2)
     }
 }
+
+final class TouchTests: XCTestCase {
+
+    let engine = SpellingEngine(lexicon: SpellingEngineTests.lexicon)
+
+    func touches(_ word: String, _ offsets: [Int: (Double, Double)] = [:]) -> [KeyTouch] {
+        word.enumerated().map { i, c in KeyTouch(letter: c, dx: offsets[i]?.0 ?? 0, dy: offsets[i]?.1 ?? 0) }
+    }
+
+    func testAnEdgeTapMakesTheNeighbourCheap() {
+        var scratch: [Double] = []
+        let typed = Array("qm".utf8), meant = Array("am".utf8)
+        let edge = EditCost.touchRows(for: typed, touches: touches("qm", [0: (0.2, 0.45)]))
+        let centre = EditCost.touchRows(for: typed, touches: touches("qm"))
+        let edgeCost = EditCost.distance(typed, meant, scratch: &scratch, rowCosts: edge)
+        let centreCost = EditCost.distance(typed, meant, scratch: &scratch, rowCosts: centre)
+        XCTAssertLessThan(edgeCost, 0.35)
+        XCTAssertGreaterThan(centreCost, 0.9)
+    }
+
+    func testTouchPicksBetweenNeighbours() {
+        // "dof": the f was tapped on its right edge, next to g → dog.
+        let toG = engine.analyze("dof", touches: touches("dof", [2: (0.45, 0)]))
+        XCTAssertEqual(toG.candidates.first?.word, "dog")
+        // Tapped on its left edge, next to d … not "dog".
+        let toD = engine.analyze("dof", touches: touches("dof", [2: (-0.45, 0)]))
+        XCTAssertNotEqual(toD.candidates.first?.word, "dog")
+    }
+
+    func testMismatchedTouchesAreIgnored() {
+        XCTAssertNil(EditCost.touchRows(for: Array("dog".utf8), touches: touches("do")))
+        let plain = engine.analyze("becuz")
+        let mismatched = engine.analyze("becuz", touches: touches("bec"))
+        XCTAssertEqual(plain.autocorrect, mismatched.autocorrect)
+    }
+
+    func testSoundingOutStillWorksWithTouches() {
+        XCTAssertEqual(engine.analyze("becuz", touches: touches("becuz")).autocorrect, "because")
+        XCTAssertEqual(engine.analyze("fone", touches: touches("fone")).candidates.first?.word, "phone")
+    }
+}
