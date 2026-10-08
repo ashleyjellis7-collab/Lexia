@@ -161,6 +161,10 @@ public final class SpellingEngine: @unchecked Sendable {
             var score = Self.score(cost: cost, weight: entry.weight) + learning.usageBoost(entry.key)
                 + contextBonus(entry.key, after: previous)
             if entry.bytes.count <= 2 && bytes.count >= 4 { score -= 1 }
+            // A name ("Riggs") is an unlikely fix for a word typed in lowercase ("roghgs" → rights).
+            if typed == lower, entry.word.first?.isUppercase == true, entry.key != "i", !entry.key.hasPrefix("i'") {
+                score -= 0.4
+            }
             candidates.append(Candidate(word: entry.word, editCost: cost, soundsAlike: soundsAlike,
                                         weight: entry.weight, score: score))
         }

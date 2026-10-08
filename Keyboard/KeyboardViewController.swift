@@ -349,6 +349,16 @@ final class KeyboardViewController: UIInputViewController {
     /// Finishes the current word with `terminator`, autocorrecting it if confident.
     private func commitWord(terminator: String) {
         let context = currentContext()
+        // "a d" → "and": the space bar was hit instead of a nearby letter.
+        if autocorrectAllowedHere, let fix = pipeline?.spaceSlipFix(before: context.before, word: context.word),
+           (textDocumentProxy.documentContextBeforeInput ?? "").hasSuffix(fix.original) {
+            for _ in 0..<fix.original.count { textDocumentProxy.deleteBackward() }
+            textDocumentProxy.insertText(fix.replacement + terminator)
+            lastAutocorrection = (fix.original, fix.replacement, terminator)
+            noteUse(fix.replacement)
+            scheduleReview()
+            return
+        }
         var replacement: String?
         if !context.word.isEmpty, autocorrectAllowedHere, let pipeline {
             let set = state.currentSet?.context == context ? state.currentSet : Optional(pipeline.local(for: context))
@@ -365,7 +375,22 @@ final class KeyboardViewController: UIInputViewController {
             lastAutocorrection = nil
             noteUse(context.word)
         }
-        if !context.word.isEmpty { scheduleReview() }
+        if !context.word.isEmpty {
+            applyLookBackFix()
+            scheduleReview()
+        }
+    }
+
+    /// Fixes the word before the one just finished when its neighbours make
+    /// the mix-up obvious ("lived their until" → there). Delete undoes it.
+    private func applyLookBackFix() {
+        guard autocorrectAllowedHere, let pipeline else { return }
+        let before = textDocumentProxy.documentContextBeforeInput ?? ""
+        guard let fix = pipeline.localLookBackFix(textBefore: String(before.suffix(300))),
+              before.hasSuffix(fix.original) else { return }
+        for _ in 0..<fix.original.count { textDocumentProxy.deleteBackward() }
+        textDocumentProxy.insertText(fix.replacement)
+        lastAutocorrection = (fix.original, fix.replacement, "")
     }
 
     private func backspace() {
@@ -375,8 +400,11 @@ final class KeyboardViewController: UIInputViewController {
             for _ in 0..<(c.replacement.count + c.terminator.count) { textDocumentProxy.deleteBackward() }
             textDocumentProxy.insertText(c.original)
             lastAutocorrection = nil
-            if learningAllowedHere { learning.recordRejection(from: c.original, to: c.replacement) }
-            learn(c.original)
+            // For look-back fixes the first word is the one that was changed ("their until" → "there until").
+            let originalWord = String(c.original.split(separator: " ").first ?? "")
+            let replacementWord = String(c.replacement.split(separator: " ").first ?? "")
+            if learningAllowedHere { learning.recordRejection(from: originalWord, to: replacementWord) }
+            if !c.original.trimmingCharacters(in: .whitespaces).contains(" ") { learn(c.original) }
             return
         }
         lastAutocorrection = nil

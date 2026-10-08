@@ -100,6 +100,58 @@ public final class SuggestionPipeline: @unchecked Sendable {
                        autocorrect: result.autocorrect, source: .device)
     }
 
+    /// After a word is finished, checks the word before it against both
+    /// neighbours ("lived their until" → there, "came form the" → from).
+    /// Returns a fix only when the word pairs make the swap clear-cut.
+    public func localLookBackFix(textBefore: String) -> TailFix? {
+        guard mode == .whenConfident, let context = engine.context else { return nil }
+        let ranges = TextScanner.wordRanges(in: textBefore)
+        guard ranges.count >= 2 else { return nil }
+        let targetRange = ranges[ranges.count - 2], nextRange = ranges[ranges.count - 1]
+        // Only when the text between them is plain spacing (no full stop or comma).
+        guard textBefore[targetRange.upperBound..<nextRange.lowerBound].allSatisfy({ $0 == " " }) else { return nil }
+        let target = String(textBefore[targetRange])
+        let lower = target.lowercased()
+        let next = String(textBefore[nextRange]).lowercased()
+        guard !lower.contains("'"), !next.contains("'") else { return nil }
+        // Contractions (they're) aren't in the word-pair data, so they're left to Jev.
+        let options = [lower] + Homophones.alternatives(for: lower).filter { !$0.contains("'") }
+        guard options.count > 1 else { return nil }
+        let previous = TextScanner.previousWord(in: String(textBefore[..<targetRange.lowerBound]))
+        func fit(_ word: String) -> Double {
+            (context.contextLift(of: word, after: previous) ?? 0) + (context.contextLift(of: next, after: word) ?? 0)
+        }
+        let typedFit = fit(lower)
+        guard let best = options.dropFirst().max(by: { fit($0) < fit($1) }),
+              fit(best) - typedFit >= Self.lookBackMargin,
+              !engine.learning.isRejected(lower, best) else { return nil }
+        let corrected = Casing.apply(from: target, to: best)
+        let tail = String(textBefore[targetRange.lowerBound...])
+        return TailFix(original: tail, replacement: corrected + tail.dropFirst(target.count),
+                       word: target, correctedWord: corrected)
+    }
+
+    /// How much better a homophone must fit both neighbours before it replaces the typed one.
+    static let lookBackMargin = 1.4
+
+    /// Fixes a space pressed instead of a nearby letter: "a d" → "and".
+    /// `before` is the text before the current word.
+    public func spaceSlipFix(before: String, word: String) -> TailFix? {
+        guard mode == .whenConfident, (1...3).contains(word.count), word.allSatisfy(\.isLetter),
+              before.hasSuffix(" "), !before.hasSuffix("  ") else { return nil }
+        let fragment = TextScanner.trailingWord(in: String(before.dropLast()))
+        guard (1...3).contains(fragment.count), fragment.allSatisfy(\.isLetter),
+              !engine.isKnown(word) || !engine.isKnown(fragment) else { return nil }
+        // The space bar sits under c, v, b, n and m.
+        let best = "cvbnm".compactMap { letter -> Lexicon.Entry? in
+            engine.lexicon.entry(for: (fragment + String(letter) + word).lowercased())
+        }.filter { $0.weight >= 0.5 }.max { $0.weight < $1.weight }
+        guard let best else { return nil }
+        let corrected = Casing.apply(from: fragment, to: best.word)
+        return TailFix(original: fragment + " " + word, replacement: corrected,
+                       word: fragment + " " + word, correctedWord: corrected)
+    }
+
     /// Likely next words for when no word has been started yet.
     public func predictions(for context: TypingContext) -> [Suggestion] {
         guard mode != .off, context.word.isEmpty else { return [] }

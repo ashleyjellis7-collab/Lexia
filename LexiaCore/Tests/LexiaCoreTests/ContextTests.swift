@@ -86,3 +86,45 @@ final class ContextTests: XCTestCase {
         measure { _ = try? ContextModel.bundledEnglish() }
     }
 }
+
+final class LookBackTests: XCTestCase {
+
+    func pipeline() -> SuggestionPipeline {
+        let engine = SpellingEngine(lexicon: SpellingEngineTests.lexicon)
+        engine.context = ContextTests.context
+        return SuggestionPipeline(engine: engine)
+    }
+
+    func testMixedUpWordsAreFixedOnceTheNextWordArrives() {
+        let p = pipeline()
+        XCTAssertEqual(p.localLookBackFix(textBefore: "and lived their until ")?.replacement, "there until ")
+        XCTAssertEqual(p.localLookBackFix(textBefore: "they lost there way ")?.replacement, "their way ")
+        XCTAssertEqual(p.localLookBackFix(textBefore: "I no that ")?.replacement, "know that ")
+        XCTAssertEqual(p.localLookBackFix(textBefore: "it is better then me ")?.replacement, "than me ")
+        XCTAssertEqual(p.localLookBackFix(textBefore: "I came form the ")?.replacement, "from the ")
+    }
+
+    func testCorrectHomophonesAreLeftAlone() {
+        let p = pipeline()
+        for text in ["they took all their friends ", "it is over there and ", "I want to go ", "is your car ",
+                     "the dog lost its bone ", "I know that ", "we went there ", "from the shop "] {
+            XCTAssertNil(p.localLookBackFix(textBefore: text), text)
+        }
+    }
+
+    func testNothingAcrossPunctuation() {
+        XCTAssertNil(pipeline().localLookBackFix(textBefore: "lived their. Until "))
+    }
+
+    func testSpaceInsteadOfALetter() {
+        let p = pipeline()
+        XCTAssertEqual(p.spaceSlipFix(before: "now a ", word: "d")?.replacement, "and")
+        XCTAssertNil(p.spaceSlipFix(before: "I have a ", word: "dog"))
+        XCTAssertNil(p.spaceSlipFix(before: "plan a ", word: "is"))
+    }
+
+    func testNamesDontBeatWordsTypedInLowercase() {
+        let e = SpellingEngine(lexicon: SpellingEngineTests.lexicon)
+        XCTAssertEqual(e.analyze("roghgs").candidates.first?.word, "rights")
+    }
+}
