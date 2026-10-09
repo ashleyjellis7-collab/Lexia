@@ -276,7 +276,8 @@ public final class SpellingEngine: @unchecked Sendable {
         // Long words with several slips ("affommodatw" → accommodate) when nothing else is close.
         let longAndClear = lower.count >= 8 && best.editCost <= Double(lower.count) * 0.25 && margin >= 0.35
         let split = allowSplit ? splitFix(typed: typed, lower: lower, previous: previous) : nil
-        if let split, !(closeEnough || longAndClear) || split.cost + 0.3 < best.editCost {
+        // A sounded-out spelling ("explane") is one word, not two ("ex plane").
+        if let split, !(closeEnough || longAndClear) || (!best.soundsAlike && split.cost + 0.5 < best.editCost) {
             return split.text
         }
         guard closeEnough || sentenceAgrees || longAndClear else { return nil }

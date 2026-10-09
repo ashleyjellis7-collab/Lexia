@@ -13,6 +13,7 @@ final class SecondReportTests: XCTestCase {
     func testALearnedFixDoesNotKeepASentenceStartCapital() {
         let learning = LearningModel()
         learning.recordCorrection(from: "th", to: "The")
+        learning.recordCorrection(from: "th", to: "The")
         let e = engine(learning)
         XCTAssertEqual(e.analyze("th", previous: "between").autocorrect, "the")
         XCTAssertEqual(e.analyze("Th", previous: ContextModel.sentenceStart).autocorrect, "The")
