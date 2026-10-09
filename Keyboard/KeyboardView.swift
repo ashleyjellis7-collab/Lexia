@@ -3,6 +3,7 @@ import LexiaCore
 
 struct KeyboardView: View {
     @ObservedObject var state: KeyboardState
+    @Environment(\.colorScheme) private var colorScheme
 
     static let keyHeight: CGFloat = 48
     static let rowSpacing: CGFloat = 10
@@ -11,7 +12,7 @@ struct KeyboardView: View {
     static var totalHeight: CGFloat { suggestionBarHeight + 4 * keyHeight + 3 * rowSpacing + 16 }
 
     var body: some View {
-        let theme = state.theme
+        let theme = Theme.make(state.settings.tint, dark: colorScheme == .dark)
         VStack(spacing: 0) {
             SuggestionBar(state: state, theme: theme)
                 .frame(height: Self.suggestionBarHeight)
@@ -198,7 +199,21 @@ struct SuggestionBar: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            if state.suggestions.isEmpty {
+            if state.settings.readBackButton {
+                barButton("speaker.wave.2", label: "Read my message aloud") { state.onReadBack() }
+            }
+            if let verdict = state.toneVerdict {
+                Text(verdict)
+                    .font(state.settings.keyFont(size: 16))
+                    .foregroundColor(theme.text)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .onTapGesture { state.toneVerdict = nil }
+                    .accessibilityAddTraits(.isStaticText)
+            } else if state.suggestions.isEmpty {
                 Text(state.notice ?? "")
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundColor(theme.secondaryText)
@@ -209,6 +224,9 @@ struct SuggestionBar: View {
                 ForEach(state.suggestions) { suggestion in
                     chip(suggestion)
                 }
+            }
+            if state.settings.toneButton {
+                barButton("face.smiling", label: "Check the tone of my message") { state.onToneCheck() }
             }
         }
         .padding(.horizontal, 6)
@@ -221,8 +239,21 @@ struct SuggestionBar: View {
         }
     }
 
+    private func barButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 16, weight: .medium))
+            .foregroundColor(theme.secondaryText)
+            .frame(width: 30)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: action)
+            .accessibilityElement()
+            .accessibilityLabel(label)
+            .accessibilityAddTraits(.isButton)
+    }
+
     private func chip(_ suggestion: Suggestion) -> some View {
-        let highlighted = suggestion.isAutocorrect || suggestion.kind == .fixPrevious
+        let highlighted = suggestion.isAutocorrect || suggestion.kind == .fixPrevious || suggestion.kind == .fixDate
         let text: String = {
             switch suggestion.kind {
             case .keepTyped:
@@ -248,7 +279,7 @@ struct SuggestionBar: View {
             )
             .contentShape(Rectangle())
             .onTapGesture { state.onSuggestion(suggestion) }
-            .onLongPressGesture(minimumDuration: 0.45) { state.onSpeak(suggestion.text) }
+            .onLongPressGesture(minimumDuration: 0.45) { state.onSpeak(suggestion) }
             .accessibilityElement()
             .accessibilityLabel(accessibility(for: suggestion))
             .accessibilityAddTraits(.isButton)
@@ -259,6 +290,8 @@ struct SuggestionBar: View {
         case .keepTyped: return "Keep \(suggestion.text)"
         case .fixPrevious: return "Change \(suggestion.fix?.word ?? "") to \(suggestion.text)"
         case .undoCorrection: return "Undo correction, keep \(suggestion.text)"
+        case .fixDate: return "Change the day to \(suggestion.fix?.correctedWord ?? suggestion.text)"
+        case .readNumber: return "Read the number aloud"
         default: return suggestion.isAutocorrect ? "\(suggestion.text), will be used" : suggestion.text
         }
     }

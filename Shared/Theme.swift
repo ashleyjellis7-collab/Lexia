@@ -33,8 +33,9 @@ extension LexiaSettings {
     }
 }
 
-/// Soft, low-glare colours: tinted backgrounds and dark-grey (not pure black)
-/// text reduce visual stress for many dyslexic readers.
+/// Keyboard colours. "Standard" matches Apple's keyboard (and follows dark
+/// mode) so Lexia is discreet; the tints are soft, low-glare colours with
+/// dark-grey text, which reduce visual stress for many dyslexic readers.
 struct Theme {
     let background: Color
     let key: Color
@@ -46,13 +47,21 @@ struct Theme {
     let accentText: Color
     let shadow: Color
 
-    static func make(_ tint: LexiaSettings.Tint) -> Theme {
+    static func make(_ tint: LexiaSettings.Tint, dark: Bool = false) -> Theme {
         func hex(_ value: UInt32) -> Color {
             Color(red: Double((value >> 16) & 0xFF) / 255, green: Double((value >> 8) & 0xFF) / 255,
                   blue: Double(value & 0xFF) / 255)
         }
         let ink = hex(0x2B2A33)
         switch tint {
+        case .standard where dark:
+            return Theme(background: hex(0x1F1F21), key: hex(0x5C5C60), functionKey: hex(0x3A3A3D),
+                         keyPressed: hex(0x7A7A7F), text: .white, secondaryText: hex(0xAEAEB2),
+                         accent: hex(0x5C5C60), accentText: .white, shadow: .black.opacity(0.6))
+        case .standard:
+            return Theme(background: hex(0xD1D3D9), key: .white, functionKey: hex(0xABB0BA),
+                         keyPressed: hex(0xBFC3CB), text: .black, secondaryText: hex(0x6E6E73),
+                         accent: .white, accentText: .black, shadow: .black.opacity(0.3))
         case .dark:
             return Theme(background: hex(0x1C1C21), key: hex(0x3A3A42), functionKey: hex(0x2A2A31),
                          keyPressed: hex(0x56565F), text: hex(0xEFE8D8), secondaryText: hex(0xB5AFA3),

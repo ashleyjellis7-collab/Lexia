@@ -8,6 +8,8 @@ import LexiaCore
 enum TrainKeyboard: String, Codable, CaseIterable, Identifiable {
     case lexia = "Lexia"
     case apple = "Apple"
+    /// Apple's keyboard with Apple Intelligence proofreading (iOS 27 Writing Tools) turned on.
+    case appleAI = "Apple + AI"
     var id: String { rawValue }
 }
 
@@ -244,10 +246,12 @@ struct TrainView: View {
             }
             .pickerStyle(.segmented)
             Picker("Keyboard", selection: $model.keyboard) {
-                ForEach(TrainKeyboard.allCases) { Text("\($0.rawValue) keyboard").tag($0) }
+                ForEach(TrainKeyboard.allCases) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
-            Text("Switch keyboards with the 🌐 key. Lexia is spotted automatically when it's in use.")
+            Text(model.keyboard == .appleAI
+                 ? "Use Apple's keyboard, then run Apple Intelligence proofreading (Writing Tools → Proofread) before you tap Check."
+                 : "Switch keyboards with the 🌐 key. Lexia is spotted automatically when it's in use.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }

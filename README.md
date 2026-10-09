@@ -2,11 +2,13 @@
 
 Lexia is a custom iOS keyboard designed for people with dyslexia:
 
-- **Easier-to-read keys.** Labels use the [OpenDyslexic](https://opendyslexic.org) font (Rounded and System fonts are also available). Keys show lowercase letters to match what you read. Optional colours for **b d p q** help you tell mirror letters apart.
+- **Discreet by default.** Out of the box Lexia looks like Apple's keyboard, so nobody can tell you're using a dyslexia keyboard. Turn off **Settings → Look → Discreet look** to switch on the dyslexia font, calm colours and letter colours.
+- **Easier-to-read keys (optional).** Labels can use the [OpenDyslexic](https://opendyslexic.org) font (Rounded and System fonts are also available). Keys show lowercase letters to match what you read. Optional colours for **b d p q** help you tell mirror letters apart.
 - **Calm colours.** Cream, blue, green, peach, lilac, grey or dark backgrounds with dark-grey (not pure black) text, plus larger keys and adjustable text size.
 - **Corrections that understand dyslexic spelling.** Lexia matches words by *sound* (`becuz` → because, `fone` → phone, `enuf` → enough). It treats mirrored letters (b/d, p/q), swapped letters (`wiht`), and dropped or doubled letters (`litle`) as small slips rather than big errors.
 - **Context from Jev.** [TypeSafe's Jev](https://docs.typesafe.ai/) reads the sentence and picks which suggestion you meant. It catches real-word mix-ups a spell checker can't, such as *their/there/they're*, *form/from* and *was/saw*.
-- **Gentle by design.** Lexia changes a word on its own only when it's confident. Press delete straight after a correction to undo it, and Lexia remembers that word. Mixed-up words are offered as a ↺ chip in the suggestion bar and never changed silently. Hold a suggestion to hear it read aloud.
+- **Gentle by design.** Lexia changes a word on its own only when it's confident. Press delete straight after a correction to undo it, and Lexia remembers that word. Mixed-up words are offered as a ↺ chip in the suggestion bar and never changed silently. Every automatic change shows a ↩ chip so you can undo it in one tap. Hold a suggestion to hear it read aloud; mixed-up words like *their/there* also come with a short meaning.
+- **Check before you send.** 🔊 reads your whole message back. Long numbers (phone numbers, codes) can be read back in chunks, and a 📅 chip appears when a weekday doesn't match its date ("Monday 14th" when the 14th is a Wednesday). The 🙂 button asks Jev how the message might come across; Jev only judges the tone and never rewrites your words.
 
 ## How the autocorrect works
 

@@ -15,6 +15,10 @@ public struct Suggestion: Sendable, Hashable, Identifiable {
         case prediction
         /// Put back what was typed before an autocorrect ("↩ passprt").
         case undoCorrection
+        /// Correct a weekday that doesn't match its date ("📅 Wednesday").
+        case fixDate
+        /// Read a number or code back in chunks ("🔊 07700 900123").
+        case readNumber
     }
 
     public let text: String
@@ -23,22 +27,33 @@ public struct Suggestion: Sendable, Hashable, Identifiable {
     public let isAutocorrect: Bool
     /// Jev was involved in choosing this.
     public let fromJev: Bool
-    /// For `.fixPrevious`: the exact end of the text to replace, and its replacement.
+    /// For `.fixPrevious` and `.fixDate`: the exact end of the text to replace, and its replacement.
     public let fix: TailFix?
+    /// What to say when the chip is read aloud, if different from its text.
+    public let spoken: String?
 
     public var id: String { "\(kind.rawValue):\(text)" }
 
-    public init(text: String, kind: Kind, isAutocorrect: Bool = false, fromJev: Bool = false, fix: TailFix? = nil) {
+    public init(text: String, kind: Kind, isAutocorrect: Bool = false, fromJev: Bool = false, fix: TailFix? = nil,
+                spoken: String? = nil) {
         self.text = text
         self.kind = kind
         self.isAutocorrect = isAutocorrect
         self.fromJev = fromJev
         self.fix = fix
+        self.spoken = spoken
     }
 }
 
 /// Replace `original` (the exact end of the text before the cursor) with `replacement`.
 public struct TailFix: Sendable, Hashable {
+    public init(original: String, replacement: String, word: String, correctedWord: String) {
+        self.original = original
+        self.replacement = replacement
+        self.word = word
+        self.correctedWord = correctedWord
+    }
+
     public let original: String
     public let replacement: String
     public let word: String

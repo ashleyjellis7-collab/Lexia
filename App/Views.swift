@@ -62,7 +62,24 @@ struct SettingsView: View {
                         .listRowInsets(EdgeInsets())
                 }
 
-                Section("Look") {
+                Section {
+                    Toggle(isOn: Binding(
+                        get: { model.settings.isDiscreet },
+                        set: { model.settings.applyDiscreetLook($0) }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Discreet look")
+                            Text("Looks like Apple's keyboard, so nobody can tell.")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Look")
+                } footer: {
+                    Text("Turn this off for the dyslexia-friendly look: OpenDyslexic font, a calm background and coloured b, d, p and q. Or mix and match below.")
+                }
+
+                Section("Fine-tune the look") {
                     Picker("Font", selection: $model.settings.font) {
                         ForEach(LexiaSettings.KeyFont.allCases) { Text($0.title).tag($0) }
                     }
@@ -85,6 +102,8 @@ struct SettingsView: View {
                     }
                     Toggle("Spot mixed-up words (their/there)", isOn: $model.settings.reviewPreviousWords)
                     Toggle("Hold a suggestion to hear it", isOn: $model.settings.speakSuggestions)
+                    Toggle("🔊 Read-it-back button", isOn: $model.settings.readBackButton)
+                    Toggle("Tone-check button (Jev)", isOn: $model.settings.toneButton)
                     Toggle("Vibrate when typing", isOn: $model.settings.keyVibration)
                 } header: {
                     Text("Corrections")
@@ -173,9 +192,10 @@ struct SettingsView: View {
 /// A live preview of the keyboard's look.
 struct KeyPreview: View {
     let settings: LexiaSettings
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let theme = Theme.make(settings.tint)
+        let theme = Theme.make(settings.tint, dark: colorScheme == .dark)
         VStack(spacing: 8) {
             HStack(spacing: 6) {
                 ForEach(["b", "d", "p", "q", "a", "e"], id: \.self) { letter in

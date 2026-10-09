@@ -24,8 +24,10 @@ final class KeyboardViewController: UIInputViewController {
     private var lastAutocorrection: (original: String, replacement: String, terminator: String)?
     /// Where each letter of the current word was touched (for finger-slip correction).
     private var touchLog: [KeyTouch] = []
-    /// After delete removes the space following an autocorrect, offers the original back.
-    private var pendingUndo: (original: String, replacement: String)?
+    /// The last automatic change, offered back as "↩ original" while it's still
+    /// at the end of the text (every automatic change gets a visible undo).
+    private var recentChange: (shown: String, restore: String, originalWord: String, replacementWord: String)?
+    private var toneChecker: JevToneChecker?
     private var lastSpace: Date?
     private var lastShiftTap: Date?
     private let speech = AVSpeechSynthesizer()
@@ -46,7 +48,9 @@ final class KeyboardViewController: UIInputViewController {
         state.inputController = self
         state.onKey = { [weak self] in self?.handle($0) }
         state.onSuggestion = { [weak self] in self?.select($0) }
-        state.onSpeak = { [weak self] in self?.speak($0) }
+        state.onSpeak = { [weak self] in self?.speakSuggestion($0) }
+        state.onReadBack = { [weak self] in self?.readBack() }
+        state.onToneCheck = { [weak self] in self?.checkTone() }
 
         let host = UIHostingController(rootView: KeyboardView(state: state))
         host.view.backgroundColor = .clear
@@ -174,6 +178,7 @@ final class KeyboardViewController: UIInputViewController {
     private func configureJev() {
         guard let pipeline else { return }
         let settings = state.settings
+        toneChecker = nil
         guard settings.useJev, settings.autocorrectMode != .off else {
             pipeline.reranker = nil
             state.notice = nil
@@ -191,6 +196,7 @@ final class KeyboardViewController: UIInputViewController {
         }
         let configuration = JevConfiguration(apiKey: key, baseURL: url, model: settings.jevModel)
         pipeline.reranker = JevReranker(client: JevClient(configuration: configuration))
+        toneChecker = JevToneChecker(client: JevClient(configuration: configuration))
         state.notice = nil
     }
 
@@ -244,7 +250,9 @@ final class KeyboardViewController: UIInputViewController {
     private func refresh() {
         suggestionTask?.cancel()
         let context = currentContext()
-        if let undo = pendingUndo, context.word != undo.replacement { pendingUndo = nil }
+        if let change = recentChange, !(textDocumentProxy.documentContextBeforeInput ?? "").hasSuffix(change.shown) {
+            recentChange = nil
+        }
         if let fix = state.reviewFix?.fix, !context.before.hasSuffix(fix.original) {
             state.reviewFix = nil
         }
@@ -275,13 +283,10 @@ final class KeyboardViewController: UIInputViewController {
 
     private func show(_ set: SuggestionSet) {
         state.currentSet = set
-        var chips = set.suggestions
-        if let fix = state.reviewFix { chips = [fix] + chips.prefix(2) }
-        if let undo = pendingUndo, set.context.word == undo.replacement {
-            chips = [Suggestion(text: undo.original, kind: .undoCorrection)]
-                + chips.filter { $0.kind != .keepTyped }.prefix(2)
-        }
-        state.suggestions = chips
+        let leading = leadingChips(set.context)
+        var rest = set.suggestions
+        if leading.contains(where: { $0.kind == .undoCorrection }) { rest.removeAll { $0.kind == .keepTyped } }
+        state.suggestions = Array((leading + rest).prefix(3))
     }
 
     private func redisplay() {
@@ -292,13 +297,39 @@ final class KeyboardViewController: UIInputViewController {
         }
     }
 
-    /// Before a word is started: a pending ↺ fix, then likely next words.
+    /// Before a word is started: undo, checks and fixes first, then likely next words.
     private func showPredictions(_ context: TypingContext) {
-        var chips: [Suggestion] = state.reviewFix.map { [$0] } ?? []
+        var chips = leadingChips(context)
         if context.word.isEmpty, let pipeline {
-            chips += pipeline.predictions(for: context).prefix(3 - chips.count)
+            chips += pipeline.predictions(for: context)
         }
-        state.suggestions = chips
+        state.suggestions = Array(chips.prefix(3))
+    }
+
+    /// Chips that go before the suggestions: ↩ undo of the last automatic change,
+    /// a weekday that doesn't match its date, a number to read back, a ↺ fix.
+    private func leadingChips(_ context: TypingContext) -> [Suggestion] {
+        var chips: [Suggestion] = []
+        let before = textDocumentProxy.documentContextBeforeInput ?? ""
+        if let change = recentChange, before.hasSuffix(change.shown) {
+            chips.append(Suggestion(text: change.originalWord, kind: .undoCorrection))
+        }
+        if context.word.isEmpty {
+            let recent = String(before.suffix(120))
+            if let issue = MessageGuard.weekdayMismatch(in: recent) {
+                chips.append(Suggestion(
+                    text: "📅 \(issue.correctWeekday)", kind: .fixDate,
+                    fix: TailFix(original: issue.original, replacement: issue.replacement,
+                                 word: issue.typedWeekday, correctedWord: issue.correctWeekday),
+                    spoken: "That date is \(issue.dateDescription), not \(issue.typedWeekday)."
+                ))
+            }
+            if let number = MessageGuard.trailingNumber(in: recent) {
+                chips.append(Suggestion(text: "🔊 \(number.number)", kind: .readNumber, spoken: number.spoken))
+            }
+        }
+        if let fix = state.reviewFix { chips.append(fix) }
+        return chips
     }
 
     /// After a word is finished, ask Jev whether one of the last two words was
@@ -320,6 +351,7 @@ final class KeyboardViewController: UIInputViewController {
     // MARK: - Keys
 
     private func handle(_ key: KeyKind) {
+        state.toneVerdict = nil
         if hasFullAccess && state.settings.keyVibration { haptics.impactOccurred() }
         if key != .space { lastSpace = nil }
         switch key {
@@ -386,6 +418,7 @@ final class KeyboardViewController: UIInputViewController {
             for _ in 0..<fix.original.count { textDocumentProxy.deleteBackward() }
             textDocumentProxy.insertText(fix.replacement + terminator)
             lastAutocorrection = (fix.original, fix.replacement, terminator)
+            recentChange = (fix.replacement + terminator, fix.original + terminator, fix.original, fix.replacement)
             noteUse(fix.replacement)
             logTraining(typed: fix.original, result: fix.replacement, .autocorrected)
             scheduleReview()
@@ -400,6 +433,7 @@ final class KeyboardViewController: UIInputViewController {
             for _ in 0..<context.word.count { textDocumentProxy.deleteBackward() }
             textDocumentProxy.insertText(replacement + terminator)
             lastAutocorrection = (context.word, replacement, terminator)
+            recentChange = (replacement + terminator, context.word + terminator, context.word, replacement)
             noteCorrection(from: context.word, to: replacement)
             noteUse(replacement)
             logTraining(typed: context.word, result: replacement, .autocorrected)
@@ -425,6 +459,7 @@ final class KeyboardViewController: UIInputViewController {
         for _ in 0..<fix.original.count { textDocumentProxy.deleteBackward() }
         textDocumentProxy.insertText(fix.replacement)
         lastAutocorrection = (fix.original, fix.replacement, "")
+        recentChange = (fix.replacement, fix.original, fix.word, fix.correctedWord)
         logTraining(typed: fix.word, result: fix.correctedWord, .autocorrected)
     }
 
@@ -437,7 +472,7 @@ final class KeyboardViewController: UIInputViewController {
                 // so deleting to add a letter doesn't undo (and learn) the typo.
                 lastAutocorrection = nil
                 textDocumentProxy.deleteBackward()
-                pendingUndo = (c.original, c.replacement)
+                recentChange = (c.replacement, c.original, c.original, c.replacement)
                 return
             }
             for _ in 0..<(c.replacement.count + c.terminator.count) { textDocumentProxy.deleteBackward() }
@@ -523,14 +558,26 @@ final class KeyboardViewController: UIInputViewController {
             textDocumentProxy.insertText(" ")
             lastAutocorrection = nil
         case .undoCorrection:
-            if let undo = pendingUndo, context.word == undo.replacement {
-                for _ in 0..<undo.replacement.count { textDocumentProxy.deleteBackward() }
-                textDocumentProxy.insertText(undo.original + " ")
-                if learningAllowedHere { learning.recordRejection(from: undo.original, to: undo.replacement) }
-                keep(undo.original)
-                logTraining(typed: undo.original, result: undo.original, .undone)
+            if let change = recentChange, (textDocumentProxy.documentContextBeforeInput ?? "").hasSuffix(change.shown) {
+                for _ in 0..<change.shown.count { textDocumentProxy.deleteBackward() }
+                // After delete removed the space, put one back so typing carries on naturally.
+                textDocumentProxy.insertText(change.restore + (change.shown.hasSuffix(" ") || change.restore.hasSuffix(" ") ? "" : " "))
+                let original = String(change.originalWord.split(separator: " ").first ?? "")
+                let replaced = String(change.replacementWord.split(separator: " ").first ?? "")
+                if learningAllowedHere { learning.recordRejection(from: original, to: replaced) }
+                if !change.originalWord.contains(" ") { keep(change.originalWord) }
+                logTraining(typed: change.originalWord, result: change.originalWord, .undone)
             }
-            pendingUndo = nil
+            recentChange = nil
+            lastAutocorrection = nil
+        case .fixDate:
+            if let fix = suggestion.fix, (textDocumentProxy.documentContextBeforeInput ?? "").hasSuffix(fix.original) {
+                for _ in 0..<fix.original.count { textDocumentProxy.deleteBackward() }
+                textDocumentProxy.insertText(fix.replacement)
+            }
+        case .readNumber:
+            say(suggestion.spoken ?? suggestion.text)
+            return
         case .prediction:
             textDocumentProxy.insertText(suggestion.text + " ")
             lastAutocorrection = nil
@@ -587,11 +634,60 @@ final class KeyboardViewController: UIInputViewController {
         SettingsStore.shared.addPersonalWord(word)
     }
 
-    private func speak(_ text: String) {
+    /// Long-press on a chip: hear it, with a short meaning for mixed-up words
+    /// ("there: a place, like over there").
+    private func speakSuggestion(_ suggestion: Suggestion) {
         guard state.settings.speakSuggestions else { return }
+        if let spoken = suggestion.spoken { return say(spoken) }
+        let word = suggestion.fix?.correctedWord ?? suggestion.text
+        if let meaning = Homophones.meaning(of: word) {
+            say("\(word). \(meaning).")
+        } else {
+            say(word)
+        }
+    }
+
+    private func say(_ text: String, rate: Float = 0.9) {
         speech.stopSpeaking(at: .immediate)
         let utterance = AVSpeechUtterance(string: text)
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.9
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * rate
         speech.speak(utterance)
+    }
+
+    /// 🔊 Reads the whole message aloud, so it can be checked by ear before sending.
+    private func readBack() {
+        if speech.isSpeaking {
+            speech.stopSpeaking(at: .immediate)
+            return
+        }
+        let text = (textDocumentProxy.documentContextBeforeInput ?? "") + (textDocumentProxy.documentContextAfterInput ?? "")
+        say(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "There's nothing to read yet." : text, rate: 0.85)
+    }
+
+    /// One tap: Jev's verdict on how the message will come across. It never changes the text.
+    private func checkTone() {
+        let text = ((textDocumentProxy.documentContextBeforeInput ?? "") + (textDocumentProxy.documentContextAfterInput ?? ""))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else {
+            state.toneVerdict = "Write your message first, then check its tone."
+            return
+        }
+        guard let toneChecker, jevAllowedHere else {
+            state.toneVerdict = hasFullAccess
+                ? "Add your TypeSafe key in the Lexia app to check tone."
+                : "Turn on “Allow Full Access” for Lexia to check tone."
+            return
+        }
+        state.toneVerdict = "Checking tone…"
+        Task { [weak self] in
+            let verdict: String
+            do {
+                verdict = try await toneChecker.check(text).summary
+            } catch {
+                verdict = "Couldn't check the tone right now."
+            }
+            guard let self, self.state.toneVerdict == "Checking tone…" else { return }
+            self.state.toneVerdict = verdict
+        }
     }
 }

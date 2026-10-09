@@ -18,17 +18,36 @@ struct LexiaSettings: Codable, Equatable {
 
     /// Background tints. Coloured, low-glare backgrounds help many dyslexic readers.
     enum Tint: String, Codable, CaseIterable, Identifiable {
-        case cream, blue, green, peach, lilac, grey, dark
+        case standard, cream, blue, green, peach, lilac, grey, dark
         var id: String { rawValue }
-        var title: String { rawValue.capitalized }
+        var title: String { self == .standard ? "Standard (like Apple)" : rawValue.capitalized }
     }
 
-    var font: KeyFont = .openDyslexic
+    /// Discreet by default: many dyslexic adults hide it at work, so Lexia looks
+    /// like a normal keyboard. The dyslexia font, tints and letter colours are opt-in.
+    var font: KeyFont = .system
     /// Show lowercase letters on keys (they match what you see in text).
     var lowercaseKeys = true
-    var tint: Tint = .cream
+    var tint: Tint = .standard
     /// Give b, d, p and q their own colours so they're easy to tell apart.
-    var letterColourCues = true
+    var letterColourCues = false
+    /// Settings saved before the discreet look (version 2) are moved to it once.
+    var lookVersion = 2
+    /// Show the 🔊 button that reads the whole message aloud.
+    var readBackButton = true
+    /// Show the tone-check button (uses Jev).
+    var toneButton = true
+
+    /// The look someone glancing at the screen wouldn't notice.
+    var isDiscreet: Bool { font != .openDyslexic && tint == .standard && !letterColourCues }
+
+    mutating func applyDiscreetLook(_ discreet: Bool) {
+        if discreet {
+            font = .system; tint = .standard; letterColourCues = false
+        } else {
+            font = .openDyslexic; tint = .cream; letterColourCues = true
+        }
+    }
     /// 0.85…1.3, scales key and suggestion text.
     var textScale: Double = 1.0
     var autocorrectMode: AutocorrectMode = .whenConfident
@@ -61,6 +80,13 @@ struct LexiaSettings: Codable, Equatable {
         keyVibration = (try? c.decode(Bool.self, forKey: .keyVibration)) ?? d.keyVibration
         jevBaseURL = (try? c.decode(String.self, forKey: .jevBaseURL)) ?? d.jevBaseURL
         jevModel = (try? c.decode(String.self, forKey: .jevModel)) ?? d.jevModel
+        readBackButton = (try? c.decode(Bool.self, forKey: .readBackButton)) ?? d.readBackButton
+        toneButton = (try? c.decode(Bool.self, forKey: .toneButton)) ?? d.toneButton
+        lookVersion = (try? c.decode(Int.self, forKey: .lookVersion)) ?? 1
+        if lookVersion < 2 {
+            applyDiscreetLook(true)
+            lookVersion = 2
+        }
     }
 }
 
