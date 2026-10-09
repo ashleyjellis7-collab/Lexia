@@ -125,16 +125,22 @@ final class TouchTests: XCTestCase {
         let edgeCost = EditCost.distance(typed, meant, scratch: &scratch, rowCosts: edge)
         let centreCost = EditCost.distance(typed, meant, scratch: &scratch, rowCosts: centre)
         XCTAssertLessThan(edgeCost, 0.35)
-        XCTAssertGreaterThan(centreCost, 0.9)
+        // A centred tap never makes a fix dearer than having no touch information.
+        XCTAssertLessThanOrEqual(centreCost, EditCost.distance("qm", "am") + 1e-9)
     }
 
     func testTouchPicksBetweenNeighbours() {
         // "dof": the f was tapped on its right edge, next to g → dog.
         let toG = engine.analyze("dof", touches: touches("dof", [2: (0.45, 0)]))
         XCTAssertEqual(toG.candidates.first?.word, "dog")
-        // Tapped on its left edge, next to d … not "dog".
-        let toD = engine.analyze("dof", touches: touches("dof", [2: (-0.45, 0)]))
-        XCTAssertNotEqual(toD.candidates.first?.word, "dog")
+        // Tapped on its left edge, next to d: "dog" is no cheaper than without touch.
+        var scratch: [Double] = []
+        let typed = Array("dof".utf8), dog = Array("dog".utf8)
+        let towardsG = EditCost.distance(typed, dog, scratch: &scratch,
+                                         rowCosts: EditCost.touchRows(for: typed, touches: touches("dof", [2: (0.45, 0)])))
+        let towardsD = EditCost.distance(typed, dog, scratch: &scratch,
+                                         rowCosts: EditCost.touchRows(for: typed, touches: touches("dof", [2: (-0.45, 0)])))
+        XCTAssertLessThan(towardsG, towardsD)
     }
 
     func testMismatchedTouchesAreIgnored() {

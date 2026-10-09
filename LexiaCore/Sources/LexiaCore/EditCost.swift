@@ -20,8 +20,6 @@ public enum EditCost {
 
     /// 128×128 substitution-cost table.
     private static let substitutionTable: [Double] = buildTable(includeKeyboardNeighbours: true)
-    /// The same without keyboard neighbours, for when the exact touch point is known.
-    private static let dyslexiaTable: [Double] = buildTable(includeKeyboardNeighbours: false)
 
     private static func buildTable(includeKeyboardNeighbours: Bool) -> [Double] {
         var table = [Double](repeating: 1.0, count: 128 * 128)
@@ -69,8 +67,9 @@ public enum EditCost {
     }
 
     /// Per-letter substitution costs for a typed word using where each key was
-    /// touched. A tap on the edge of "q" next to "a" makes "a" a cheap fix; a
-    /// tap dead in the middle of a key makes swapping it for a neighbour expensive.
+    /// touched. A tap on the edge of "q" next to "a" makes "a" a cheaper fix.
+    /// Touches only ever make fixes cheaper, never dearer: a finger can land in
+    /// the middle of the wrong key (a mis-aim), so a centred tap isn't proof.
     /// Returns nil unless there is one touch per typed letter.
     public static func touchRows(for typed: [UInt8], touches: [KeyTouch]) -> [Double]? {
         guard touches.count == typed.count, !touches.isEmpty else { return nil }
@@ -85,7 +84,7 @@ public enum EditCost {
             let point = (x: centre.x + touch.dx, y: centre.y + touch.dy)
             let fromTyped = (touch.dx * touch.dx + touch.dy * touch.dy).squareRoot()
             for b in 0..<128 {
-                var cost = dyslexiaTable[Int(a) * 128 + b]
+                var cost = substitutionTable[Int(a) * 128 + b]
                 if let other = keyCentre(UInt8(b)), b != Int(a) {
                     let dx = point.x - other.x, dy = point.y - other.y
                     let fromOther = (dx * dx + dy * dy).squareRoot()

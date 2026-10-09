@@ -207,7 +207,8 @@ public final class SpellingEngine: @unchecked Sendable {
             completions: completions,
             autocorrect: autocorrect(typed: typed, lower: lower, known: known, candidates: candidates,
                                      learnedFix: learnedFix,
-                                     typedScore: previous != nil && context != nil ? typedScore : nil),
+                                     typedScore: previous != nil && context != nil ? typedScore : nil,
+                                     previous: previous),
             probabilities: probabilities
         )
     }
@@ -217,7 +218,8 @@ public final class SpellingEngine: @unchecked Sendable {
     }
 
     private func autocorrect(typed: String, lower: String, known: Bool, candidates: [Candidate],
-                             learnedFix: (word: String, strength: Int)?, typedScore: Double?) -> String? {
+                             learnedFix: (word: String, strength: Int)?, typedScore: Double?,
+                             previous: String?) -> String? {
         // A fix the writer keeps choosing: once for a misspelling, twice for a real word ("luke" → like).
         if let fix = learnedFix, fix.strength >= (known ? 2 : 1) {
             return Casing.apply(from: typed, to: fix.word)
@@ -233,8 +235,10 @@ public final class SpellingEngine: @unchecked Sendable {
             // A real word that doesn't fit the sentence, one slip away from one that
             // clearly does: "he us" → is, "going ti" → to.
             // (Look-alike homophones such as its/it's are left to Jev's look-back review.)
+            // A slip or two away is also fine when the sentence makes it obvious ("we cab talk" → can).
             if let typedScore, Homophones.alternatives(for: lower).isEmpty, let swap = candidates.first(where: {
-                $0.editCost <= 0.6 && $0.score - typedScore >= Self.realWordSwapMargin
+                let gain = $0.score - typedScore
+                return ($0.editCost <= 0.6 && gain >= Self.realWordSwapMargin || $0.editCost <= 1.2 && gain >= 1.5)
                     && !learning.isRejected(lower, $0.word)
             }) {
                 return Casing.apply(from: typed, to: swap.word)
@@ -247,9 +251,16 @@ public final class SpellingEngine: @unchecked Sendable {
             }
             return nil
         }
-        guard lower.count >= 2, let best = candidates.first, best.editCost <= 1.5,
-              !learning.isRejected(lower, best.word) else { return nil }
-        if candidates.count > 1, best.score - candidates[1].score < 0.25 { return nil }
+        // A lone "j" is the "i" key just missed: "j am" → "I am".
+        if lower == "j" { return "I" }
+        guard lower.count >= 2, let best = candidates.first, !learning.isRejected(lower, best.word) else { return nil }
+        let margin = candidates.count > 1 ? best.score - candidates[1].score : .infinity
+        // Close spellings need a small lead; messier ones ("dkrd" → does) need the
+        // sentence to point clearly at the word as well.
+        let closeEnough = best.editCost <= 1.5 && margin >= 0.25
+        let sentenceAgrees = best.editCost <= 2.2 && margin >= 0.5
+            && contextBonus(best.word.lowercased(), after: previous) >= 0.4
+        guard closeEnough || sentenceAgrees else { return nil }
         return Casing.apply(from: typed, to: best.word)
     }
 
