@@ -320,6 +320,14 @@ struct TrainView: View {
                 .font(settings.keyFont(size: 18))
                 .fixedSize(horizontal: false, vertical: true)
 
+            if round.keyboard == .lexia, let last = round.typed.last, last.isLetter,
+               let lastMiss = round.misses.last, lastMiss.typed.isEmpty == false,
+               round.typed.lowercased().hasSuffix(lastMiss.typed.lowercased()) {
+                Text("Tip: Lexia fixes a word when you finish it. End with a full stop or a space before you tap Check.")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+            }
+
             if !round.fixes.isEmpty {
                 Text("Lexia fixed: " + round.fixes.map { "\($0.raw ?? "") → \($0.expected)" }.joined(separator: ", "))
                     .font(.callout)

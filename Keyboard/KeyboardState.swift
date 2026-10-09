@@ -79,7 +79,11 @@ final class KeyboardState: ObservableObject {
     @Published var returnLabel = "return"
     @Published var jevWorking = false
     /// A tone-check result (or status) shown in place of the suggestions.
-    @Published var toneVerdict: String?
+    @Published var toneVerdict: String? {
+        didSet { if toneVerdict == nil { toneAdditions = [] } }
+    }
+    /// Friendly endings Jev suggested with the tone verdict ("Thanks!").
+    @Published var toneAdditions: [String] = []
 
     var currentSet: SuggestionSet?
     weak var inputController: UIInputViewController?
@@ -92,6 +96,7 @@ final class KeyboardState: ObservableObject {
     var onSpeak: (Suggestion) -> Void = { _ in }
     var onReadBack: () -> Void = {}
     var onToneCheck: () -> Void = {}
+    var onToneAddition: (String) -> Void = { _ in }
 
     var theme: Theme { Theme.make(settings.tint) }
 

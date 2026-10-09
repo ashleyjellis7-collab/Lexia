@@ -117,7 +117,7 @@ public final class SpellingEngine: @unchecked Sendable {
     ///   so it is never treated as a misspelling.
     /// - Parameter touches: where each letter was touched, for telling slips onto a neighbouring key apart.
     public func analyze(_ rawTyped: String, previous: String? = nil, isDictionaryWord: Bool = false,
-                        touches: [KeyTouch] = [], limit: Int = 5) -> SpellingResult {
+                        touches: [KeyTouch] = [], limit: Int = 5, allowSplit: Bool = true) -> SpellingResult {
         let typed = TextScanner.normalized(rawTyped)
         let lower = typed.lowercased()
         let bytes = Array(lower.utf8)
@@ -176,7 +176,11 @@ public final class SpellingEngine: @unchecked Sendable {
         candidates.sort { $0.score > $1.score }
 
         // A fix this writer has picked before goes to the top.
-        let learnedFix = learning.learnedFix(for: lower)
+        // Learned fixes are stored as first chosen, so a fix picked at the start of a sentence
+        // ("th" → The) would keep its capital everywhere. Use the dictionary's own form.
+        let learnedFix = learning.learnedFix(for: lower).map { fix in
+            (word: lexicon.entry(for: fix.word.lowercased())?.word ?? fix.word, strength: fix.strength)
+        }
         if let fix = learnedFix {
             let fixLower = fix.word.lowercased()
             let cost = candidates.first { $0.word.lowercased() == fixLower }?.editCost
@@ -209,7 +213,7 @@ public final class SpellingEngine: @unchecked Sendable {
             autocorrect: autocorrect(typed: typed, lower: lower, known: known, candidates: candidates,
                                      learnedFix: learnedFix,
                                      typedScore: previous != nil && context != nil ? typedScore : nil,
-                                     previous: previous),
+                                     previous: previous, allowSplit: allowSplit),
             probabilities: probabilities
         )
     }
@@ -220,7 +224,7 @@ public final class SpellingEngine: @unchecked Sendable {
 
     private func autocorrect(typed: String, lower: String, known: Bool, candidates: [Candidate],
                              learnedFix: (word: String, strength: Int)?, typedScore: Double?,
-                             previous: String?) -> String? {
+                             previous: String?, allowSplit: Bool) -> String? {
         // A fix the writer keeps choosing: once for a misspelling, twice for a real word ("luke" → like).
         if let fix = learnedFix, fix.strength >= (known ? 2 : 1) {
             return Casing.apply(from: typed, to: fix.word)
@@ -230,7 +234,12 @@ public final class SpellingEngine: @unchecked Sendable {
             return Casing.apply(from: typed, to: fix)
         }
         if known && lexicon.entry(for: lower) == nil {
-            return nil   // a real word Lexia knows too little about to second-guess
+            // A rare word only the iPhone's dictionary knows ("som", "twi", "paries") is far
+            // more likely a slip for a common word one key away. Anything else is left alone.
+            guard let best = candidates.first, best.editCost <= 1.0, best.weight >= 0.5,
+                  candidates.count < 2 || best.score - candidates[1].score >= 0.4,
+                  !learning.isRejected(lower, best.word) else { return nil }
+            return Casing.apply(from: typed, to: best.word)
         }
         if known {
             // A real word that doesn't fit the sentence, one slip away from one that
@@ -254,15 +263,59 @@ public final class SpellingEngine: @unchecked Sendable {
         }
         // A lone "j" is the "i" key just missed: "j am" → "I am".
         if lower == "j" { return "I" }
-        guard lower.count >= 2, let best = candidates.first, !learning.isRejected(lower, best.word) else { return nil }
+        guard lower.count >= 2 else { return nil }
+        guard let best = candidates.first, !learning.isRejected(lower, best.word) else {
+            return allowSplit ? splitFix(typed: typed, lower: lower, previous: previous)?.text : nil
+        }
         let margin = candidates.count > 1 ? best.score - candidates[1].score : .infinity
         // Close spellings need a small lead; messier ones ("dkrd" → does) need the
         // sentence to point clearly at the word as well.
         let closeEnough = best.editCost <= 1.5 && margin >= 0.25
         let sentenceAgrees = best.editCost <= 2.2 && margin >= 0.5
             && contextBonus(best.word.lowercased(), after: previous) >= 0.4
-        guard closeEnough || sentenceAgrees else { return nil }
+        // Long words with several slips ("affommodatw" → accommodate) when nothing else is close.
+        let longAndClear = lower.count >= 8 && best.editCost <= Double(lower.count) * 0.25 && margin >= 0.35
+        let split = allowSplit ? splitFix(typed: typed, lower: lower, previous: previous) : nil
+        if let split, !(closeEnough || longAndClear) || split.cost + 0.3 < best.editCost {
+            return split.text
+        }
+        guard closeEnough || sentenceAgrees || longAndClear else { return nil }
         return Casing.apply(from: typed, to: best.word)
+    }
+
+    /// Two words run together, with the space missed or hit as a bottom-row letter
+    /// beside the space bar: "inthe" → in the, "geybthis" → get this.
+    func splitFix(typed: String, lower: String, previous: String?) -> (text: String, cost: Double)? {
+        let chars = Array(lower)
+        guard chars.count >= 4, chars.count <= 20, chars.allSatisfy({ $0.isLetter }) else { return nil }
+        var best: (text: String, cost: Double)?
+        for i in 1..<(chars.count - 1) {
+            for replacesSpace in [false, true] {
+                if replacesSpace && !"cvbnm".contains(chars[i]) { continue }
+                let left = String(chars[..<i])
+                let right = String(chars[(replacesSpace ? i + 1 : i)...])
+                guard right.count >= 2, let rightEntry = lexicon.entry(for: right), rightEntry.weight >= 0.45,
+                      left.count >= 2 || left == "a" || left == "i" else { continue }
+                var cost = replacesSpace ? 0.4 : 0.3
+                let leftWord: String
+                if let entry = lexicon.entry(for: left), entry.weight >= 0.45 {
+                    leftWord = entry.word
+                } else if left.count >= 2 {
+                    // One slip in the first word is fine ("gey" → get).
+                    let fix = analyze(left, previous: previous, limit: 2, allowSplit: false)
+                    guard !fix.isKnownWord, let first = fix.candidates.first, fix.autocorrect == first.word,
+                          first.editCost <= 0.6, first.weight >= 0.45 else { continue }
+                    leftWord = first.word
+                    cost += first.editCost
+                } else { continue }
+                // The two words must make sense together.
+                if context != nil, contextBonus(rightEntry.key, after: leftWord.lowercased()) <= 0 { continue }
+                if best == nil || cost < best!.cost {
+                    best = (Casing.apply(from: String(typed.prefix(left.count)), to: leftWord) + " " + rightEntry.word, cost)
+                }
+            }
+        }
+        return best
     }
 
     private static func softmax(typed: (String, Double)?, candidates: [Candidate]) -> [String: Double] {

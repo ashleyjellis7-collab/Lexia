@@ -51,6 +51,7 @@ final class KeyboardViewController: UIInputViewController {
         state.onSpeak = { [weak self] in self?.speakSuggestion($0) }
         state.onReadBack = { [weak self] in self?.readBack() }
         state.onToneCheck = { [weak self] in self?.checkTone() }
+        state.onToneAddition = { [weak self] in self?.addEnding($0) }
 
         let host = UIHostingController(rootView: KeyboardView(state: state))
         host.view.backgroundColor = .clear
@@ -664,6 +665,20 @@ final class KeyboardViewController: UIInputViewController {
         say(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "There's nothing to read yet." : text, rate: 0.85)
     }
 
+    /// Adds a suggested ending ("Thanks!") after the whole message. The writer's own words stay as they are.
+    private func addEnding(_ ending: String) {
+        let after = textDocumentProxy.documentContextAfterInput ?? ""
+        if !after.isEmpty { textDocumentProxy.adjustTextPosition(byCharacterOffset: after.count) }
+        let before = textDocumentProxy.documentContextBeforeInput ?? ""
+        let edit = MessageEnding.edit(adding: ending, after: before)
+        for _ in 0..<edit.deleteCount { textDocumentProxy.deleteBackward() }
+        textDocumentProxy.insertText(edit.insert)
+        state.toneVerdict = nil
+        recentChange = nil
+        updateAutoShift()
+        refresh()
+    }
+
     /// One tap: Jev's verdict on how the message will come across. It never changes the text.
     private func checkTone() {
         let text = ((textDocumentProxy.documentContextBeforeInput ?? "") + (textDocumentProxy.documentContextAfterInput ?? ""))
@@ -679,15 +694,20 @@ final class KeyboardViewController: UIInputViewController {
             return
         }
         state.toneVerdict = "Checking tone…"
+        state.toneAdditions = []
         Task { [weak self] in
             let verdict: String
+            var additions: [String] = []
             do {
-                verdict = try await toneChecker.check(text).summary
+                let result = try await toneChecker.check(text)
+                verdict = result.summary
+                additions = result.additions
             } catch {
                 verdict = "Couldn't check the tone right now."
             }
             guard let self, self.state.toneVerdict == "Checking tone…" else { return }
             self.state.toneVerdict = verdict
+            self.state.toneAdditions = additions
         }
     }
 }

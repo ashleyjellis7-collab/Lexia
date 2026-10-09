@@ -204,7 +204,7 @@ struct SuggestionBar: View {
             }
             if let verdict = state.toneVerdict {
                 Text(verdict)
-                    .font(state.settings.keyFont(size: 16))
+                    .font(state.settings.keyFont(size: state.toneAdditions.isEmpty ? 16 : 13))
                     .foregroundColor(theme.text)
                     .lineLimit(2)
                     .minimumScaleFactor(0.7)
@@ -213,6 +213,21 @@ struct SuggestionBar: View {
                     .contentShape(Rectangle())
                     .onTapGesture { state.toneVerdict = nil }
                     .accessibilityAddTraits(.isStaticText)
+                ForEach(state.toneAdditions, id: \.self) { ending in
+                    Text("+ \(ending)")
+                        .font(state.settings.keyFont(size: 16, bold: true))
+                        .foregroundColor(theme.text)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                        .padding(.horizontal, 6)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(theme.key.opacity(0.55)))
+                        .contentShape(Rectangle())
+                        .onTapGesture { state.onToneAddition(ending) }
+                        .accessibilityElement()
+                        .accessibilityLabel("Add \(ending) to the end")
+                        .accessibilityAddTraits(.isButton)
+                }
             } else if state.suggestions.isEmpty {
                 Text(state.notice ?? "")
                     .font(.system(size: 13, weight: .medium, design: .rounded))
