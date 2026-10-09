@@ -275,9 +275,10 @@ public final class SpellingEngine: @unchecked Sendable {
             && contextBonus(best.word.lowercased(), after: previous) >= 0.4
         // Long words with several slips ("affommodatw" → accommodate) when nothing else is close.
         let longAndClear = lower.count >= 8 && best.editCost <= Double(lower.count) * 0.25 && margin >= 0.35
-        let split = allowSplit ? splitFix(typed: typed, lower: lower, previous: previous) : nil
+        let soundedOut = best.soundsAlike && best.editCost <= 1.2
+        let split = allowSplit && !soundedOut ? splitFix(typed: typed, lower: lower, previous: previous) : nil
         // A sounded-out spelling ("explane") is one word, not two ("ex plane").
-        if let split, !(closeEnough || longAndClear) || (!best.soundsAlike && split.cost + 0.5 < best.editCost) {
+        if let split, !(closeEnough || longAndClear) || split.cost + 0.5 < best.editCost {
             return split.text
         }
         guard closeEnough || sentenceAgrees || longAndClear else { return nil }
