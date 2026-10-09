@@ -81,8 +81,10 @@ final class SecondReportTests: XCTestCase {
             """)
         }
         let checker = JevToneChecker(client: JevClient(configuration: JevConfiguration(apiKey: "k"), transport: transport))
-        XCTAssertEqual(try await checker.check("Send me the file").additions, ["Thanks!", "No worries if not."])
+        let first = try await checker.check("Send me the file")
+        XCTAssertEqual(first.additions, ["Thanks!", "No worries if not."])
         // Endings already in the message aren't suggested again.
-        XCTAssertEqual(try await checker.check("Send me the file, thanks").additions, ["No worries if not."])
+        let second = try await checker.check("Send me the file, thanks")
+        XCTAssertEqual(second.additions, ["No worries if not."])
     }
 }
