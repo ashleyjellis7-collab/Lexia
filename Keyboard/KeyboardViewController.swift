@@ -75,6 +75,7 @@ final class KeyboardViewController: UIInputViewController {
         pipeline?.mode = state.settings.autocorrectMode
         pipeline?.engine.learn(SettingsStore.shared.personalWords)
         reloadLearningIfNeeded()
+        isTraining = (SettingsStore.shared.trainingActiveUntil ?? .distantPast) > Date()
         configureJev()
         updateTraits()
         updateAutoShift()
@@ -101,6 +102,17 @@ final class KeyboardViewController: UIInputViewController {
 
     /// Don't learn from (or send) text typed into sensitive fields.
     private var learningAllowedHere: Bool { jevAllowedHere }
+
+    /// True while the Lexia app's Train tab is open.
+    private var isTraining = false
+
+    /// Records a finished word for the Train tab (only during training, never in sensitive fields).
+    private func logTraining(typed: String, result: String, _ action: TrainingEvent.Action) {
+        guard isTraining, learningAllowedHere, !typed.isEmpty else { return }
+        var log = SettingsStore.shared.trainingLog
+        log.append(TrainingEvent(typed: typed, result: result, action: action))
+        SettingsStore.shared.trainingLog = log
+    }
 
     private func noteUse(_ word: String) {
         guard learningAllowedHere, !word.isEmpty else { return }
@@ -375,6 +387,7 @@ final class KeyboardViewController: UIInputViewController {
             textDocumentProxy.insertText(fix.replacement + terminator)
             lastAutocorrection = (fix.original, fix.replacement, terminator)
             noteUse(fix.replacement)
+            logTraining(typed: fix.original, result: fix.replacement, .autocorrected)
             scheduleReview()
             return
         }
@@ -389,10 +402,12 @@ final class KeyboardViewController: UIInputViewController {
             lastAutocorrection = (context.word, replacement, terminator)
             noteCorrection(from: context.word, to: replacement)
             noteUse(replacement)
+            logTraining(typed: context.word, result: replacement, .autocorrected)
         } else {
             textDocumentProxy.insertText(terminator)
             lastAutocorrection = nil
             noteUse(context.word)
+            logTraining(typed: context.word, result: context.word, .kept)
         }
         if !context.word.isEmpty {
             applyLookBackFix()
@@ -410,6 +425,7 @@ final class KeyboardViewController: UIInputViewController {
         for _ in 0..<fix.original.count { textDocumentProxy.deleteBackward() }
         textDocumentProxy.insertText(fix.replacement)
         lastAutocorrection = (fix.original, fix.replacement, "")
+        logTraining(typed: fix.word, result: fix.correctedWord, .autocorrected)
     }
 
     private func backspace() {
@@ -503,6 +519,7 @@ final class KeyboardViewController: UIInputViewController {
             state.reviewFix = nil
         case .keepTyped:
             keep(context.word)
+            logTraining(typed: context.word, result: context.word, .kept)
             textDocumentProxy.insertText(" ")
             lastAutocorrection = nil
         case .undoCorrection:
@@ -511,6 +528,7 @@ final class KeyboardViewController: UIInputViewController {
                 textDocumentProxy.insertText(undo.original + " ")
                 if learningAllowedHere { learning.recordRejection(from: undo.original, to: undo.replacement) }
                 keep(undo.original)
+                logTraining(typed: undo.original, result: undo.original, .undone)
             }
             pendingUndo = nil
         case .prediction:
@@ -522,6 +540,7 @@ final class KeyboardViewController: UIInputViewController {
             textDocumentProxy.insertText(suggestion.text + " ")
             lastAutocorrection = nil
             if suggestion.kind == .correction { noteCorrection(from: context.word, to: suggestion.text) }
+            logTraining(typed: context.word, result: suggestion.text, .picked)
             noteUse(suggestion.text)
             scheduleReview()
         }

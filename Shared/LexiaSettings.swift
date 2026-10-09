@@ -103,6 +103,22 @@ final class SettingsStore {
         }
     }
 
+    // MARK: Training (the app's Train tab)
+
+    /// While set and in the future, the keyboard logs finished words for the Train tab.
+    var trainingActiveUntil: Date? {
+        get { read("training.active").flatMap { try? JSONDecoder().decode(Date.self, from: $0) } }
+        set { write((try? JSONEncoder().encode(newValue ?? .distantPast)) ?? Data(), "training.active") }
+    }
+
+    /// Words the keyboard finished during training (most recent last, capped).
+    var trainingLog: [TrainingEvent] {
+        get { read("training.log.v1").flatMap { try? JSONDecoder().decode([TrainingEvent].self, from: $0) } ?? [] }
+        set {
+            if let data = try? JSONEncoder().encode(Array(newValue.suffix(300))) { write(data, "training.log.v1") }
+        }
+    }
+
     /// Whether the one-time clean-up of mistakenly learned words has run.
     var didCleanPersonalWords: Bool {
         get { read("cleanup.v1") != nil }

@@ -16,6 +16,8 @@ struct LexiaApp: App {
                     .tabItem { Label("Set up", systemImage: "keyboard") }
                 SettingsView()
                     .tabItem { Label("Settings", systemImage: "slider.horizontal.3") }
+                TrainView()
+                    .tabItem { Label("Train", systemImage: "graduationcap") }
                 TryItView()
                     .tabItem { Label("Try it", systemImage: "text.cursor") }
             }

@@ -26,6 +26,7 @@
 		D145053ADDA63702FD87AD2E /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D91D2AA4540AF6B39C24B3E /* Theme.swift */; };
 		D7CEE105628B02CB5FA09D34 /* LexiaCore in Frameworks */ = {isa = PBXBuildFile; productRef = 57ED469D99BC03923C43C00C /* LexiaCore */; };
 		EA5E31E727425C82D9A9AA33 /* Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 566E9C99CFD7F3F7BDE19A66 /* Views.swift */; };
+		8B2D3F4E5C60718293A4B5C6 /* TrainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C2E3D4B5F60718293A4B5 /* TrainView.swift */; };
 		F4929194C5CA139DD8166359 /* OpenDyslexic-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 4EF2FF01B45A89DD57898AC5 /* OpenDyslexic-Bold.otf */; };
 /* End PBXBuildFile section */
 
@@ -62,6 +63,7 @@
 		40F79F99F680E822A2BDD2F4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		4EF2FF01B45A89DD57898AC5 /* OpenDyslexic-Bold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "OpenDyslexic-Bold.otf"; sourceTree = "<group>"; };
 		566E9C99CFD7F3F7BDE19A66 /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
+		7A1C2E3D4B5F60718293A4B5 /* TrainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainView.swift; sourceTree = "<group>"; };
 		6642398A8BDB6A709607EF53 /* Lexia.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lexia.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		67E98242F97DE87BE19FC89B /* LexiaCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LexiaCore; path = LexiaCore; sourceTree = SOURCE_ROOT; };
 		6BD6030DF207CA07247E4393 /* LexiaSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LexiaSettings.swift; sourceTree = "<group>"; };
@@ -140,6 +142,7 @@
 				BA958831C18173858769CF98 /* Info.plist */,
 				C2C28F971FB0EEC0BD674D9D /* Lexia.entitlements */,
 				E58912261C8F92DB9DFB0A70 /* LexiaApp.swift */,
+				7A1C2E3D4B5F60718293A4B5 /* TrainView.swift */,
 				566E9C99CFD7F3F7BDE19A66 /* Views.swift */,
 			);
 			path = App;
@@ -285,6 +288,7 @@
 				5B1CE7821166FFD44D83E010 /* LexiaApp.swift in Sources */,
 				202DB3B87E727B626C61C813 /* LexiaSettings.swift in Sources */,
 				D145053ADDA63702FD87AD2E /* Theme.swift in Sources */,
+				8B2D3F4E5C60718293A4B5C6 /* TrainView.swift in Sources */,
 				EA5E31E727425C82D9A9AA33 /* Views.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
