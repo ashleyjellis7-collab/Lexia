@@ -67,7 +67,7 @@ public final class SpellingEngine: @unchecked Sendable {
     static let contextWeight = 0.6
     /// How much better (in score) a near-miss must fit the sentence before a
     /// real word is swapped for it ("he us" → is).
-    static let realWordSwapMargin = 0.7
+    static let realWordSwapMargin = 0.5
 
     public init(lexicon: Lexicon, personalWords: [String] = [], learning: LearningModel = LearningModel()) {
         self.lexicon = lexicon
@@ -133,8 +133,9 @@ public final class SpellingEngine: @unchecked Sendable {
         let typedKeys = Phonetic.keys(for: lower)
         let typedMask = Lexicon.letterMask(bytes)
         let typedLetterCount = typedMask.nonzeroBitCount
-        // A candidate must share most of the typed letters (or sound alike).
-        let minSharedLetters = typedLetterCount - (1 + typedLetterCount / 4)
+        // A candidate must share most of the typed letters (or sound alike). Short words
+        // only need one in common: a couple of slips can change most of them ("tbr" → the).
+        let minSharedLetters = bytes.count <= 4 ? 1 : typedLetterCount - (1 + typedLetterCount / 4)
         let maxLengthGap = max(2, bytes.count / 3)
         let maxCost = 3.0
         var scratch: [Double] = []
